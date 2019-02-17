@@ -1,0 +1,49 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.snice.modem</groupId>
+        <artifactId>snice-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <name>Super Nice Modem</name>
+    <groupId>io.snice.modem</groupId>
+    <artifactId>modem-core</artifactId>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.snice</groupId>
+            <artifactId>snice-commons</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.snice</groupId>
+            <artifactId>snice-buffers</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.hektor</groupId>
+            <artifactId>hektor-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.hektor</groupId>
+            <artifactId>hektor-actors</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.hektor</groupId>
+            <artifactId>hektor-fsm</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fazecast</groupId>
+            <artifactId>jSerialComm</artifactId>
+        </dependency>
+
+    </dependencies>
+
+</project>

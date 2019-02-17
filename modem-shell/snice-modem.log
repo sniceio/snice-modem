@@ -1,0 +1,18 @@
+17:35:51.634 [pool-1-thread-4] INFO  i.s.modem.actors.ModemManagerActor - [/modem.sh/modem_manager] Starting
+17:35:51.639 [pool-1-thread-4] INFO  sh.modem.actors.ShellActor - [/modem.sh/shell] Starting
+17:35:51.641 [pool-1-thread-4] INFO  io.hektor.actors.io.ConsoleActor - [null] Added /modem.sh/shell as a subscriber
+17:35:51.642 [pool-1-thread-4] INFO  io.hektor.actors.io.ConsoleActor - [/modem.sh/shell/console] Starting
+17:35:51.643 [pool-1-thread-4] INFO  io.hektor.actors.io.InputStreamActor - [/modem.sh/shell/console/in] Added /modem.sh/shell/console as a subscriber
+17:35:51.644 [pool-1-thread-4] INFO  i.hektor.actors.io.OutputStreamActor - [/modem.sh/shell/console/out] Added /modem.sh/shell/console as a subscriber
+17:35:51.644 [pool-1-thread-4] INFO  io.hektor.actors.io.InputStreamActor - [/modem.sh/shell/console/in] Starting
+17:35:51.644 [pool-1-thread-1] INFO  i.hektor.actors.io.OutputStreamActor - [/modem.sh/shell/console/out] Starting
+17:35:57.115 [pool-1-thread-4] DEBUG sh.modem.actors.ShellActor - [/modem.sh/shell] Received: io.hektor.actors.io.StreamToken$DefaultStreamToken@1c22a37a
+17:35:57.158 [pool-1-thread-4] DEBUG sh.modem.actors.ShellActor - [/modem.sh/shell] Received: io.snice.modem.actors.messages.impl.DefaultScanResponse@2865590a
+17:36:01.591 [pool-1-thread-4] DEBUG sh.modem.actors.ShellActor - [/modem.sh/shell] Received: io.hektor.actors.io.StreamToken$DefaultStreamToken@83a387a
+17:36:01.606 [pool-1-thread-2] INFO  io.snice.modem.actors.ModemActor - [/modem.sh/modem_manager/ttyusb2] Starting
+17:36:01.653 [pool-1-thread-2] DEBUG io.snice.modem.actors.ModemActor - [/modem.sh/modem_manager/ttyusb2] Processing any potential callables after invocation
+17:36:02.658 [pool-1-thread-2] INFO  io.snice.modem.actors.ModemActor - [/modem.sh/modem_manager/ttyusb2] Received a message: io.snice.modem.actors.events.ModemConnectFailure
+17:36:02.662 [pool-1-thread-2] INFO  io.snice.modem.actors.ModemActor - [/modem.sh/modem_manager/ttyusb2] CONNECTING -> DISCONNECTING Event: io.snice.modem.actors.events.ModemConnectFailure@6f438562
+17:36:02.670 [pool-1-thread-2] DEBUG io.snice.modem.actors.ModemActor - [/modem.sh/modem_manager/ttyusb2] Processing scheduled task io.snice.modem.actors.fsm.CachingFsmScheduler$CancellableTask@638f41f6
+17:36:02.671 [pool-1-thread-2] DEBUG io.snice.modem.actors.ModemActor - [/modem.sh/modem_manager/ttyusb2] Processing any potential callables after invocation
+17:36:05.023 [pool-1-thread-4] DEBUG sh.modem.actors.ShellActor - [/modem.sh/shell] Received: io.hektor.actors.io.StreamToken$DefaultStreamToken@330c1b06

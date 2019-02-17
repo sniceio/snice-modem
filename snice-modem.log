@@ -1,0 +1,8 @@
+08:48:39.300 [pool-1-thread-4] INFO  i.s.modem.actors.ModemManagerActor - [/modem.sh/modem_manager] Starting
+08:48:39.305 [pool-1-thread-4] INFO  sh.modem.actors.ShellActor - [/modem.sh/shell] Starting
+08:48:39.308 [pool-1-thread-4] INFO  io.hektor.actors.io.ConsoleActor - [null] Added /modem.sh/shell as a subscriber
+08:48:39.309 [pool-1-thread-4] INFO  io.hektor.actors.io.ConsoleActor - [/modem.sh/shell/console] Starting
+08:48:39.310 [pool-1-thread-4] INFO  io.hektor.actors.io.InputStreamActor - [/modem.sh/shell/console/in] Added /modem.sh/shell/console as a subscriber
+08:48:39.311 [pool-1-thread-4] INFO  i.hektor.actors.io.OutputStreamActor - [/modem.sh/shell/console/out] Added /modem.sh/shell/console as a subscriber
+08:48:39.312 [pool-1-thread-4] INFO  io.hektor.actors.io.InputStreamActor - [/modem.sh/shell/console/in] Starting
+08:48:39.312 [pool-1-thread-1] INFO  i.hektor.actors.io.OutputStreamActor - [/modem.sh/shell/console/out] Starting

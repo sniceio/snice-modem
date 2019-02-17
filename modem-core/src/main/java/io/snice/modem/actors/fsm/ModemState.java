@@ -1,0 +1,5 @@
+package io.snice.modem.actors.fsm;
+
+public enum ModemState {
+    CONNECTING, CONNECTED, IDENTIFICATION, RESET, READY, COMMAND_EXEC, CLEAN_UP, DISCONNECTING, TERMINATED;
+}
