@@ -41,6 +41,10 @@ public class ItuResultCodes {
         this.encoded = encoded;
     }
 
+    public String toString() {
+        return code.toString();
+    }
+
     public Code getCode() {
         return code;
     }
@@ -49,7 +53,7 @@ public class ItuResultCodes {
         return buffer.endsWith(encoded);
     }
 
-    private enum Code {
+    public enum Code {
         OK(0, "OK", true),
         CONNECT(1, "CONNECT", false),
         RING(2, "RING", false),
@@ -81,6 +85,10 @@ public class ItuResultCodes {
             return isFinal;
         }
 
+        @Override
+        public String toString() {
+            return verboseCode;
+        }
 
     }
 }

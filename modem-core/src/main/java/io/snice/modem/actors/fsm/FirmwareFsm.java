@@ -1,43 +1,82 @@
 package io.snice.modem.actors.fsm;
 
+import io.hektor.actors.io.StreamToken;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
 import io.hektor.fsm.builder.FSMBuilder;
 import io.hektor.fsm.builder.StateBuilder;
+import io.snice.buffer.Buffer;
+import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
+import io.snice.modem.actors.events.ModemDisconnect;
+import io.snice.modem.actors.events.ModemEvent;
+import io.snice.modem.actors.events.ModemReset;
+
+import java.util.Optional;
 
 public class FirmwareFsm {
 
-    private static final Definition<FirmwareState, FirmwareContext, FirmwareData> definition;
+    public static final Definition<FirmwareState, FirmwareContext, FirmwareData> definition;
 
     static {
+        final FSMBuilder<FirmwareState, FirmwareContext, FirmwareData> builder =
+                FSM.of(FirmwareState.class).ofContextType(FirmwareContext.class).withDataType(FirmwareData.class);
 
-            final FSMBuilder<FirmwareState, FirmwareContext, FirmwareData> builder =
-                    FSM.of(FirmwareState.class).ofContextType(FirmwareContext.class).withDataType(FirmwareData.class);
-
-            stateDefinitionsInput(builder.withInitialState(FirmwareState.RESET));
-            // stateDefinitionsConnecting(builder.withInitialState(ModemState.CONNECTING));
-            // stateDefinitionsConnected(builder.withState(ModemState.CONNECTED));
-            // stateDefinitionsDisconnecting(builder.withState(ModemState.DISCONNECTING));
-            // stateDefinitionsTerminated(builder.withFinalState(ModemState.TERMINATED));
-
-            definition = builder.build();
-    }
-
-    private static void stateDefinitionsReset(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> reset) {
+        stateDefinitionsReady(builder.withInitialState(FirmwareState.READY));
+        stateDefinitionsReset(builder.withTransientState(FirmwareState.RESET));
+        stateDefinitionsInput(builder.withState(FirmwareState.INPUT));
+        stateDefinitionsTerminated(builder.withFinalState(FirmwareState.TERMINATED));
+        definition = builder.build();
     }
 
     /**
+     * In the ready state we're just waiting for two main events, a command to write to the
+     * modem or a reset command, which forces us into the reset loop.
+     *
      * In the ready state we are just waiting for someone to give us a command to write
      * to the modem, which we'll do by giving the command to the Input state that will,
      * on its enter action, write it to the modem (by using the context object, which, depending
-     * on implementation, will give it to the actor representing the inputstream wo the modem.
+     * on implementation, will give it to the actor representing the inputstream of the modem.
      *
      * @param ready
      */
     private static void stateDefinitionsReady(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> ready) {
+        ready.transitionTo(FirmwareState.RESET).onEvent(ModemReset.class).withGuard(FirmwareFsm::isConfiguredWithResetCommands);
+        ready.transitionTo(FirmwareState.INPUT).onEvent(AtCommand.class).withAction(FirmwareFsm::writeToModem);
+        ready.transitionTo(FirmwareState.TERMINATED).onEvent(ModemDisconnect.class);
+    }
+
+    private static void stateDefinitionsReset(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> reset) {
+        reset.withEnterAction(FirmwareFsm::onEnterReset);
+        reset.transitionTo(FirmwareState.INPUT)
+                .onEvent(ModemReset.class)
+                .withGuard((r, ctx, data) -> data.isResetting())
+                .withAction(FirmwareFsm::sendResetCommand);
 
 
+        // last resort transition, which is mandatory and will bring us back
+        // into the READY state. This means that we have either no reset commands to send
+        // or we have sent them all and as such, we should move back to READY
+        reset.transitionTo(FirmwareState.READY).asDefaultTransition().withAction(o -> System.err.println("Going back to ready"));
+    }
+
+    private static void onEnterReset(final FirmwareContext ctx, final FirmwareData data){
+        // new reset cycle
+        if (!data.isResetting()) {
+            data.resetTheResetCommands(ctx.getConfiguration().getResetCommands());
+            data.isResetting(true);
+        }
+    }
+
+    private static void sendResetCommand(final ModemEvent ignore, final FirmwareContext ctx, final FirmwareData data) {
+        final Optional<AtCommand> optional = data.getNextResetCommand();
+        data.isResetting(optional.isPresent());
+        optional.ifPresent(cmd -> writeToModem(cmd, ctx, data));
+    }
+
+    private static void writeToModem(final AtCommand cmd, final FirmwareContext ctx, final FirmwareData data) {
+        data.setCurrentCommand(cmd);
+        ctx.writeToModem(cmd);
     }
 
     /**
@@ -47,6 +86,10 @@ public class FirmwareFsm {
      * @param input
      */
     private static void stateDefinitionsInput(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> input) {
+
+        input.transitionTo(FirmwareState.INPUT).onEvent(StreamToken.class).withAction(FirmwareFsm::processStreamToken);
+
+        input.transitionTo(FirmwareState.INPUT).onEvent(AtCommand.class).withAction((cmd, ctx, data) -> data.stashCommand(cmd));
 
         // if we are in the RESET flow then upon a final AT response
         // we'll go back to the REST state again since it may want to send more
@@ -58,6 +101,30 @@ public class FirmwareFsm {
     }
 
     private static void stateDefinitionsTerminated(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> terminated) {
+    }
+
+    private static boolean isConfiguredWithResetCommands(final ModemReset ignore, final FirmwareContext ctx, final FirmwareData data){
+        return ctx.getConfiguration().hasResetCommands();
+    }
+
+    private static void processStreamToken(final StreamToken token, final FirmwareContext ctx, final FirmwareData data) {
+        final Buffer buffer = token.getBuffer();
+        System.err.println(buffer);
+        final Optional<ItuResultCodes> optional = ctx.getConfiguration().matchResultCode(buffer);
+        if (optional.isPresent()) {
+            final ItuResultCodes code = optional.get();
+            System.err.println("yay, matched against " + code);
+            if (code.getCode().isFinal()) {
+                final AtCommand cmd = data.consumeCurrentCommand();
+                final AtResponse response = AtResponse.of(cmd, data.consumeAllData());
+                ctx.processResponse(response);
+            } else {
+                data.stashBuffer(buffer);
+            }
+        } else {
+            System.err.println("Nope, I guess it is a partial result");
+            data.stashBuffer(buffer);
+        }
     }
 
 }

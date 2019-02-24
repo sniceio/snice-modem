@@ -22,7 +22,6 @@ import io.snice.modem.actors.fsm.ModemState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.OutputStream;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -31,7 +30,6 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
 
 /**
  * Responsible for the over arching state and operation of the modem which it represents.
- *
  */
 public class ModemActor implements Actor, LoggingSupport {
 
@@ -48,10 +46,6 @@ public class ModemActor implements Actor, LoggingSupport {
     private final ExecutorService blockingIoPool;
 
     private ActorRef firmwareActor;
-
-    // private ActorRef portInputStream;
-    // private ActorRef portOutputStream;
-
     private final ModemConfiguration config;
 
 
@@ -106,15 +100,18 @@ public class ModemActor implements Actor, LoggingSupport {
             fsm.onEvent(msg);
             postInvocation();
         } else if (msg instanceof AtCommand) {
-            sendAtCommandToModem((AtCommand)msg);
+            // should be given to the modem actor as well... which really would just return
+            // it to the actor for dispatching...
+            sendToModem((AtCommand) msg);
         } else if (msg instanceof StreamToken) {
             final StreamToken token = (StreamToken) msg;
+
             System.err.println("Received from modem: " + token.getBuffer());
         } else if (msg instanceof LifecycleEvent.Terminated) {
-            final LifecycleEvent.Terminated dead = (LifecycleEvent.Terminated)msg;
+            final LifecycleEvent.Terminated dead = (LifecycleEvent.Terminated) msg;
             logInfo("Received a Lifecycle Terminated event: {}", dead.getActor());
         } else if (msg instanceof Terminated) {
-            processChildDeath((Terminated)msg);
+            processChildDeath((Terminated) msg);
         } else {
             logInfo("Passing event to Modem FSM");
 
@@ -133,9 +130,9 @@ public class ModemActor implements Actor, LoggingSupport {
 
     private void startFirmwareActor() {
         final SerialPort port = modemCtx.getPort();
-        final OutputStream out = port.getOutputStream();
         firmwareActor = ctx().actorOf("firmware", ModemFirmwareActor.props(config, port, blockingIoPool));
     }
+
     /**
      * After every invocation/interaction with the FSM we need to process
      * any runnables or timers the FSM may have scheduled.
@@ -148,14 +145,14 @@ public class ModemActor implements Actor, LoggingSupport {
     }
 
     private void processAtCommands() {
-        modemCtx.getNextCommand().ifPresent(this::sendAtCommandToModem);
+        modemCtx.getNextModemEvent().ifPresent(this::sendToModem);
     }
 
-    private void sendAtCommandToModem(final AtCommand cmd) {
+    private void sendToModem(final ModemEvent event) {
         if (firmwareActor != null) {
-            firmwareActor.tell(cmd, self());
+            firmwareActor.tell(event, self());
         } else {
-            logInfo("Unable to process {}, we are not connected to the modem", cmd);
+            logInfo("Unable to process {}, we are not connected to the modem", event);
         }
     }
 

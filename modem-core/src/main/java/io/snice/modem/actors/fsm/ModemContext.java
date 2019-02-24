@@ -5,7 +5,8 @@ import io.hektor.core.ActorRef;
 import io.hektor.fsm.Context;
 import io.hektor.fsm.Scheduler;
 import io.snice.modem.actors.ModemConfiguration;
-import io.snice.modem.actors.events.AtCommand;
+import io.snice.modem.actors.events.ModemEvent;
+import io.snice.modem.actors.events.ModemReset;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +27,7 @@ public class ModemContext implements Context {
 
     private final SerialPort port;
 
-    private final List<AtCommand> outstandingAtCommands;
+    private final List<ModemEvent> outstandingModemEvents;
 
     public ModemContext(final ActorRef self, final SerialPort serialPort, final Scheduler scheduler, final ExecutorService threadPool, final ModemConfiguration config) {
         this.self = self;
@@ -34,11 +35,18 @@ public class ModemContext implements Context {
         this.scheduler = scheduler;
         this.config = config;
         this.threadPool  = threadPool;
-        this.outstandingAtCommands = new ArrayList<>();
+        this.outstandingModemEvents = new ArrayList<>();
     }
 
     public ActorRef getSelf() {
         return self;
+    }
+
+    /**
+     * Connect to the modem.
+     */
+    public void connect() {
+
     }
 
     @Override
@@ -50,16 +58,22 @@ public class ModemContext implements Context {
         return config;
     }
 
-    public void sendAtCommand(final AtCommand command) {
-        outstandingAtCommands.add(command);
+    /**
+     * Pass on an event to the actual modem. Typically, this will be AT commands but also
+     * other types of commands such as the {@link ModemReset} command.
+     *
+     * @param event
+     */
+    public void sendEvent(final ModemEvent event) {
+        outstandingModemEvents.add(event);
     }
 
-    public Optional<AtCommand> getNextCommand() {
-        if (outstandingAtCommands.isEmpty()) {
+    public Optional<ModemEvent> getNextModemEvent() {
+        if (outstandingModemEvents.isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(outstandingAtCommands.remove(0));
+        return Optional.of(outstandingModemEvents.remove(0));
     }
 
     public SerialPort getPort() {

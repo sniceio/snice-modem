@@ -3,17 +3,23 @@ package io.snice.modem.actors;
 import com.fazecast.jSerialComm.SerialPort;
 import io.hektor.actors.LoggingSupport;
 import io.hektor.actors.io.InputStreamActor;
-import io.hektor.actors.io.IoEvent;
 import io.hektor.actors.io.OutputStreamActor;
 import io.hektor.actors.io.StreamToken;
 import io.hektor.core.Actor;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
 import io.hektor.core.internal.Terminated;
+import io.hektor.fsm.FSM;
 import io.snice.buffer.Buffer;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
 import io.snice.modem.actors.events.ModemDisconnect;
+import io.snice.modem.actors.events.ModemEvent;
+import io.snice.modem.actors.fsm.CachingFsmScheduler;
+import io.snice.modem.actors.fsm.FirmwareContext;
+import io.snice.modem.actors.fsm.FirmwareData;
+import io.snice.modem.actors.fsm.FirmwareFsm;
+import io.snice.modem.actors.fsm.FirmwareState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,8 +56,12 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     private ActorRef inRef;
     private ActorRef outRef;
 
-    public static Props props(final ModemConfiguration config, final SerialPort port, final ExecutorService blockingIpPool) {
+    private FSM<FirmwareState, FirmwareContext, FirmwareData> fsm;
+    private FirmwareContext ctx;
+    private FirmwareData data;
+    private final CachingFsmScheduler cachingFsmScheduler;
 
+    public static Props props(final ModemConfiguration config, final SerialPort port, final ExecutorService blockingIpPool) {
         return Props.forActor(ModemFirmwareActor.class, () -> new ModemFirmwareActor(config, port, blockingIpPool));
     }
 
@@ -60,6 +70,7 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
         this.port = port;
         this.blockingIoPool = blockingIpPool;
         self = self();
+        this.cachingFsmScheduler = new CachingFsmScheduler();
     }
 
     @Override
@@ -67,6 +78,12 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
         logInfo("Starting");
         startReader();
         startWriter();
+
+        data = new FirmwareData();
+        ctx = new FirmwareContext(cachingFsmScheduler, config, self, outRef);
+        fsm = FirmwareFsm.definition.newInstance(getUUID(), ctx, data, this::unhandledEvent, this::onTransition);
+
+        fsm.start();
     }
 
     private void startReader() {
@@ -82,16 +99,27 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     @Override
     public void onReceive(final Object msg) {
 
+        if (msg instanceof Terminated) {
+            // only one that shouldn't go to the FSM
+            processChildDeath((Terminated)msg);
+        } else {
+            fsm.onEvent(msg);
+        }
+
+        if (true) return;
+
         if (msg instanceof AtCommand) {
             // pass to FSM
-            outRef.tell(IoEvent.writeEvent(((AtCommand)msg).getCommand()), self());
+            // outRef.tell(IoEvent.writeEvent(((AtCommand)msg).getCommand()), self());
+            fsm.onEvent(msg);
         } else if (msg instanceof ModemDisconnect) {
             // should give this to the FSM as well.
             System.err.println("Guess we are shutting down");
 
         } else if (msg instanceof StreamToken) {
             // Should go to FSM
-            processStreamToken((StreamToken)msg);
+            // processStreamToken((StreamToken)msg);
+            fsm.onEvent(msg);
         } else if (msg instanceof Terminated) {
             // only one that shouldn't go to the FSM
             processChildDeath((Terminated)msg);
@@ -104,9 +132,6 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
         if (buffer.endsWith(OK)) {
             System.err.println("yay! it's an OK and the end of this CMD");
         }
-
-
-
     }
 
     private void processChildDeath(final Terminated terminated) {
@@ -121,6 +146,23 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     @Override
     public Object getUUID() {
         return self;
+    }
+
+    public void unhandledEvent(final FirmwareState state, final Object o) {
+        logger.warn("TODO: unhandled event " + o.getClass().getName());
+    }
+
+    public void onTransition(final FirmwareState currentState, final FirmwareState toState, final Object event) {
+        logInfo("{} -> {} Event: {}", currentState, toState, format(event));
+    }
+
+    private static final String format(final Object object) {
+        try {
+            final ModemEvent event = (ModemEvent) object;
+            return event.toString();
+        } catch (final ClassCastException e) {
+            return object.toString();
+        }
     }
 
 }

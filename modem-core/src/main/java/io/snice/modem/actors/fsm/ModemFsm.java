@@ -23,6 +23,9 @@ public class ModemFsm {
 
         stateDefinitionsConnecting(builder.withInitialState(ModemState.CONNECTING));
         stateDefinitionsConnected(builder.withState(ModemState.CONNECTED));
+
+        stateDefinitionsReady(builder.withState(ModemState.READY));
+
         stateDefinitionsDisconnecting(builder.withState(ModemState.DISCONNECTING));
         stateDefinitionsTerminated(builder.withFinalState(ModemState.TERMINATED));
 
@@ -40,7 +43,7 @@ public class ModemFsm {
         connecting.transitionTo(ModemState.CONNECTED)
                 .onEvent(ModemEvent.class)
                 .withGuard(ModemEvent::isConnectSuccessEvent)
-                .withAction((event, ctx, data) -> ctx.sendAtCommand(AtCommand.of("AT")));
+                .withAction((event, ctx, data) -> ctx.sendEvent(AtCommand.of("AT")));
 
         // eventually we'll retry different baud rates and what not but for now, we'll just
         // give up right away because we have no patience...
@@ -94,9 +97,12 @@ public class ModemFsm {
      * Upon entering connecting we will actually submit a job to try and connect to
      * the actual modem.
      *
+     * TODO: we shouldn't do this in the FSM. We will ask the ctx to e.g. connect/disconnect etc.
+     *
      * @param ctx
      * @param data
      */
+
     private static void onConnectingEnterAction(final ModemContext ctx, final ModemData data) {
         final SerialPort port = ctx.getPort();
         final ModemConfiguration config = ctx.getConfig();

@@ -14,6 +14,11 @@ modem:
   resetCommands:
     - ATZ
 
+  # Need to figure out how to specify chars in yaml...
+  # s3: '\r'
+  # s4: '\n'
+  verboseResponseFormat: true
+
   # the output stream towards the modem. I.e., this is the stream
   # we write to in order to write commands to the modem
   out:

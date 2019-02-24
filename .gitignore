@@ -21,3 +21,5 @@ dependency-reduced-pom.xml
 
 # Backup files
 *.bak
+
+*.log

@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
-
 /**
  * Depending on the settings of the modem, the responses will be formatted differently. Therefore
  * you will need to create a new framer whenever you change any of the settings that affect
