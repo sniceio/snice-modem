@@ -31,6 +31,22 @@ public class FirmwareContext implements Context {
         modemWriteStream.tell(IoEvent.writeEvent(cmd.getCommand()), self);
     }
 
+    /**
+     * I'm not sure about this. May need to add something to the hektor for transitioning in code to another
+     * state. Now you have to send the event back to yourself, which feels odd. Actually, perhaps we do this
+     * on one of the actions but it is a bit odd because the action would have a side effect of building
+     * this crap up. Feels even more wrong...
+     *
+     * So, emit the event on the transition back to READY? But who knows which actor it came from
+     * to begin with?
+     *
+     * Actually, why not emit it here and send an event back to ourselves as well... nothing wrong with that...
+     * Still feels odd though...
+     *
+     * ahhhh, perhaps INPUT is a transiet state to deal with this stuff.
+     *
+     * @param response
+     */
     public void processResponse(final AtResponse response) {
         self.tell(response, self);
     }

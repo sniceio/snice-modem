@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -103,6 +104,13 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
             // only one that shouldn't go to the FSM
             processChildDeath((Terminated)msg);
         } else {
+            if (msg instanceof ModemEvent) {
+                final ModemEvent transaction = (ModemEvent)msg;
+                final UUID id = transaction.getTransactionId();
+                System.err.println("Transction " + id + " for event " + msg.getClass().getName() + " from " + sender());
+            }
+
+            final ActorRef sender = sender();
             fsm.onEvent(msg);
         }
 

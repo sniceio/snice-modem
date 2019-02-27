@@ -2,7 +2,7 @@ package io.snice.modem.actors.events;
 
 import java.util.UUID;
 
-public abstract  class ModemEvent {
+public abstract class ModemEvent {
 
     private final UUID transactionId;
 

@@ -6,10 +6,10 @@ import io.hektor.fsm.FSM;
 import io.hektor.fsm.builder.FSMBuilder;
 import io.hektor.fsm.builder.StateBuilder;
 import io.snice.modem.actors.ModemConfiguration;
-import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.ModemConnectFailure;
 import io.snice.modem.actors.events.ModemConnectSuccess;
 import io.snice.modem.actors.events.ModemEvent;
+import io.snice.modem.actors.events.ModemReset;
 
 import java.time.Duration;
 
@@ -22,6 +22,7 @@ public class ModemFsm {
                 FSM.of(ModemState.class).ofContextType(ModemContext.class).withDataType(ModemData.class);
 
         stateDefinitionsConnecting(builder.withInitialState(ModemState.CONNECTING));
+        stateDefinitionsReset(builder.withState(ModemState.RESET));
         stateDefinitionsConnected(builder.withState(ModemState.CONNECTED));
 
         stateDefinitionsReady(builder.withState(ModemState.READY));
@@ -40,14 +41,18 @@ public class ModemFsm {
     private static void stateDefinitionsConnecting(final StateBuilder<ModemState, ModemContext, ModemData> connecting) {
         connecting.withEnterAction(ModemFsm::onConnectingEnterAction);
 
-        connecting.transitionTo(ModemState.CONNECTED)
+        connecting.transitionTo(ModemState.RESET)
                 .onEvent(ModemEvent.class)
-                .withGuard(ModemEvent::isConnectSuccessEvent)
-                .withAction((event, ctx, data) -> ctx.sendEvent(AtCommand.of("AT")));
+                .withGuard(ModemEvent::isConnectSuccessEvent);
 
         // eventually we'll retry different baud rates and what not but for now, we'll just
         // give up right away because we have no patience...
         connecting.transitionTo(ModemState.DISCONNECTING).onEvent(ModemEvent.class).withGuard(ModemEvent::isConnectFailureEvent);
+    }
+
+    private static void stateDefinitionsReset(final StateBuilder<ModemState, ModemContext, ModemData> resetting) {
+        resetting.withEnterAction((ctx, data) -> ctx.sendEvent(ModemReset.of()));
+        resetting.transitionTo(ModemState.CONNECTED).onEvent(String.class);
     }
 
     /**
@@ -61,7 +66,6 @@ public class ModemFsm {
      */
     private static void stateDefinitionsConnected(final StateBuilder<ModemState, ModemContext, ModemData> connected) {
         connected.withEnterAction(ModemFsm::onConnectedEnterAction);
-
         connected.transitionTo(ModemState.READY).onEvent(String.class).withGuard("TIMEOUT_CONNECTED"::equals);
     }
 

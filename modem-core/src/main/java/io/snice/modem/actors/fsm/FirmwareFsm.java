@@ -24,6 +24,12 @@ public class FirmwareFsm {
 
         stateDefinitionsReady(builder.withInitialState(FirmwareState.READY));
         stateDefinitionsReset(builder.withTransientState(FirmwareState.RESET));
+
+        // may need a transient state which is PROCESS_INPUT and that checks
+        // if we'll wait for more input from the modem or if we go back to
+        // ready... Is then READY also a transiet state because if we have oustanding commands
+        // we are going to need to handle them.... or do we actually push that up to the
+        // modem instead.
         stateDefinitionsInput(builder.withState(FirmwareState.INPUT));
         stateDefinitionsTerminated(builder.withFinalState(FirmwareState.TERMINATED));
         definition = builder.build();
@@ -57,7 +63,7 @@ public class FirmwareFsm {
         // last resort transition, which is mandatory and will bring us back
         // into the READY state. This means that we have either no reset commands to send
         // or we have sent them all and as such, we should move back to READY
-        reset.transitionTo(FirmwareState.READY).asDefaultTransition().withAction(o -> System.err.println("Going back to ready"));
+        reset.transitionTo(FirmwareState.READY).asDefaultTransition();
     }
 
     private static void onEnterReset(final FirmwareContext ctx, final FirmwareData data){
@@ -86,9 +92,7 @@ public class FirmwareFsm {
      * @param input
      */
     private static void stateDefinitionsInput(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> input) {
-
         input.transitionTo(FirmwareState.INPUT).onEvent(StreamToken.class).withAction(FirmwareFsm::processStreamToken);
-
         input.transitionTo(FirmwareState.INPUT).onEvent(AtCommand.class).withAction((cmd, ctx, data) -> data.stashCommand(cmd));
 
         // if we are in the RESET flow then upon a final AT response
@@ -109,11 +113,9 @@ public class FirmwareFsm {
 
     private static void processStreamToken(final StreamToken token, final FirmwareContext ctx, final FirmwareData data) {
         final Buffer buffer = token.getBuffer();
-        System.err.println(buffer);
         final Optional<ItuResultCodes> optional = ctx.getConfiguration().matchResultCode(buffer);
         if (optional.isPresent()) {
             final ItuResultCodes code = optional.get();
-            System.err.println("yay, matched against " + code);
             if (code.getCode().isFinal()) {
                 final AtCommand cmd = data.consumeCurrentCommand();
                 final AtResponse response = AtResponse.of(cmd, data.consumeAllData());
@@ -122,7 +124,6 @@ public class FirmwareFsm {
                 data.stashBuffer(buffer);
             }
         } else {
-            System.err.println("Nope, I guess it is a partial result");
             data.stashBuffer(buffer);
         }
     }
