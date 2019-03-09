@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
 /**
- * Responsible for the over arching state and operation of the modem which it represents.
+ * Responsible for the over arching state and operation success the modem which it represents.
  */
 public class ModemActor implements Actor, LoggingSupport {
 

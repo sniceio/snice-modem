@@ -46,7 +46,7 @@ public class ShellActor implements Actor, LoggingSupport {
         assertNotNull(blockingIoPool, "You must specify the thread pool used for blocking IO operations");
         assertNotNull(modemManager, "You must specify modem manager");
         assertNotNull(in, "You must specify the input stream from where we'll read commands");
-        assertNotNull(out, "You must specify the out stream to which we'll print the result of commands");
+        assertNotNull(out, "You must specify the out stream to which we'll print the result success commands");
         return Props.forActor(ShellActor.class, () -> new ShellActor(config, blockingIoPool, modemManager, in, out));
     }
 

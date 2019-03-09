@@ -1,5 +1,5 @@
 package io.snice.modem.actors.fsm;
 
 public enum FirmwareState {
-    READY, INPUT, RESET, TERMINATED;
+    READY, RESET, WAIT, PROCESSING, TERMINATED;
 }

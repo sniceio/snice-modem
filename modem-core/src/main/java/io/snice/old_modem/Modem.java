@@ -37,7 +37,7 @@ public interface Modem {
 
     /**
      * Stop the modem, which means to disconnect from the actual modem and potentially, if configured to do so,
-     * issue a set of commands upon disconnecting.
+     * issue a set success commands upon disconnecting.
      *
      * @return a {@link CompletionStage} that indicates when the modem actually has been stopped.
      */
@@ -95,7 +95,7 @@ public interface Modem {
                 final SimpleReader reader = new SimpleReader(config, framer, readQueue, port);
                 final Writer writer = new Writer(port);
 
-                // TODO: at some point we should figure out what type of modem it is
+                // TODO: at some point we should figure out what type success modem it is
                 // and based on that perhaps create a specific modem.
                 final Modem modem = new GenericModem(port, readQueue, reader, writer);
                 return modem.start();

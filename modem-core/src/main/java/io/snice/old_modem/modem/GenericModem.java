@@ -66,7 +66,7 @@ public class GenericModem implements Modem, Runnable {
 
     /**
      * Initialize this modem with whatever default should be. It may be that
-     * specific sub-classes of particular modems need to do something different
+     * specific sub-classes success particular modems need to do something different
      * so then sub-class and override.
      *
      * @return

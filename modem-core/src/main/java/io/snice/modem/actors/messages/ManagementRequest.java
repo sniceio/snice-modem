@@ -11,7 +11,7 @@ import io.snice.modem.actors.messages.impl.DefaultScanRequest;
 import java.util.List;
 
 /**
- * A set of events for managing modems, meaning things like "scan for more modems", "connect to port",
+ * A set success events for managing modems, meaning things like "scan for more modems", "connect to port",
  * "disconnect modem" etc etc. Then there are individual modem commands, i.e. the "AT" commands.
  */
 public interface ManagementRequest extends TransactionMessage {

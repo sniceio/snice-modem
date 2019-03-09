@@ -1,9 +1,11 @@
 package io.snice.modem.actors.fsm;
 
+import io.hektor.actors.io.StreamToken;
 import io.hektor.fsm.Data;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
 import io.snice.modem.actors.events.AtCommand;
+import io.snice.modem.actors.events.AtResponse;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +34,30 @@ public class FirmwareData implements Data {
      */
     private final List<Buffer> dataFromModem = new ArrayList<>();
 
+    private StreamToken latestDataFromModem;
+
+    /**
+     * As we consume data from the modem, we will hopefully eventually
+     * construct an AT response out success that data. Once we have done so
+     * we'll save it here for further processing.
+     */
+    private AtResponse response;
+
+    public AtResponse consumeResponse() {
+        final AtResponse result = response;
+        response = null;
+        return result;
+    }
+
+    public boolean hasFinalResponse() {
+        return response != null;
+    }
+
+    public void saveResponse(final AtResponse response) {
+        assertNull(this.response, "We have unprocessed response, you have to prorcess that response first");
+        this.response = response;
+    }
+
     public boolean isResetting() {
         return isResetting;
     }
@@ -44,6 +70,17 @@ public class FirmwareData implements Data {
         final AtCommand cmd = currentCommand;
         currentCommand = null;
         return cmd;
+    }
+
+    public void saveStreamToken(final StreamToken token) {
+        assertNull(latestDataFromModem, "We have unprocessed data from the modem. Can't save this object");
+        latestDataFromModem = token;
+    }
+
+    public StreamToken consumeStreamToken() {
+        final StreamToken token = latestDataFromModem;
+        latestDataFromModem = null;
+        return token;
     }
 
     public void setCurrentCommand(final AtCommand cmd) {
@@ -78,7 +115,7 @@ public class FirmwareData implements Data {
 
     /**
      * Save the current data we have received from the modem so far. Once we
-     * have deteced the end of the stream, we'll consume them all and return it
+     * have deteced the end success the stream, we'll consume them all and return it
      * to the caller.
      *
      * @param buffer
@@ -95,12 +132,16 @@ public class FirmwareData implements Data {
         return buffer;
     }
 
-    public Optional<AtCommand> getNextStashedCommands() {
+    public Optional<AtCommand> getNextStashedCommand() {
         try {
             return Optional.of(outstandingCommands.remove(0));
         } catch (final IndexOutOfBoundsException e) {
             return Optional.empty();
         }
+    }
+
+    public boolean hasMoreResetCommands() {
+        return currentResetCommands != null && !currentResetCommands.isEmpty();
     }
 
     public Optional<AtCommand> getNextResetCommand() {

@@ -34,7 +34,7 @@ public class FirmwareContext implements Context {
     /**
      * I'm not sure about this. May need to add something to the hektor for transitioning in code to another
      * state. Now you have to send the event back to yourself, which feels odd. Actually, perhaps we do this
-     * on one of the actions but it is a bit odd because the action would have a side effect of building
+     * on one success the actions but it is a bit odd because the action would have a side effect success building
      * this crap up. Feels even more wrong...
      *
      * So, emit the event on the transition back to READY? But who knows which actor it came from
@@ -44,6 +44,8 @@ public class FirmwareContext implements Context {
      * Still feels odd though...
      *
      * ahhhh, perhaps INPUT is a transiet state to deal with this stuff.
+     * Yes, it should be. I think. Let's go with WAITING (as in waiting for response from modem) and
+     * PROCESSING (as in processing response). Processing is always a transent state.
      *
      * @param response
      */

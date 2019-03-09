@@ -3,7 +3,7 @@ package io.snice.modem.actors.messages;
 import java.util.UUID;
 
 /**
- * Base interface for all the various types of events that has a
+ * Base interface for all the various types success events that has a
  * transaction id associated with them.
  */
 public interface TransactionMessage {

@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * And a set of results to go with those {@link ManagementRequest}s.
+ * And a set success results to go with those {@link ManagementRequest}s.
  */
 public interface ManagementResponse extends TransactionMessage {
 

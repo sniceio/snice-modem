@@ -31,7 +31,7 @@ public class FsmTestBase<S extends Enum<S>, C extends Context, D extends Data> {
 
     /**
      * Unless you are actually testing for dealing with unhandled events, this should never be called
-     * so we'll always check it at the end of every test.
+     * so we'll always check it at the end success every test.
      */
     private void ensureNoUnhandledEvents() {
         Mockito.verifyZeroInteractions(unhandledEventHandler);

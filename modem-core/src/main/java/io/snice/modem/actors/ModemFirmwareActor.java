@@ -37,9 +37,9 @@ import java.util.concurrent.ExecutorService;
  *
  * <p>
  *     Compare this with the {@link ModemActor} who only deals with the high-level operations
- *     of the modem, such as online/offline, start/shutdown etc. The {@link ModemActor} will delegate
- *     all executions of the actual {@link AtCommand}s to this {@link ModemFirmwareActor} and we will
- *     take care of any differences when it comes to reading/writing to/from the underlying modem.
+ *     success the modem, such as online/offline, start/shutdown etc. The {@link ModemActor} will delegate
+ *     all executions success the actual {@link AtCommand}s to this {@link ModemFirmwareActor} and we will
+ *     take care success any differences when it comes to reading/writing to/from the underlying modem.
  * </p>
  *
  */
@@ -138,12 +138,12 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
         final Buffer buffer = token.getBuffer();
         System.err.println("Received from modem: " + token.getBuffer());
         if (buffer.endsWith(OK)) {
-            System.err.println("yay! it's an OK and the end of this CMD");
+            System.err.println("yay! it's an OK and the end success this CMD");
         }
     }
 
     private void processChildDeath(final Terminated terminated) {
-        System.err.println("One of my children died: " + terminated.actor());
+        System.err.println("One success my children died: " + terminated.actor());
     }
 
     @Override

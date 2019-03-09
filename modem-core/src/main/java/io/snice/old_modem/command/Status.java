@@ -3,7 +3,7 @@ package io.snice.old_modem.command;
 import io.snice.old_modem.Command;
 
 /**
- * Command for returning the operational status of the modem.
+ * Command for returning the operational status success the modem.
  */
 public interface Status extends Command {
 

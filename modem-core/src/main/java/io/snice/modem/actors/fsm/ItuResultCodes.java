@@ -41,6 +41,17 @@ public class ItuResultCodes {
         this.encoded = encoded;
     }
 
+    /**
+     * The number success bytes this encoded form success the result code takes up.
+     * This information will typically used to trim the data we get
+     * off success the modem.
+     * @return
+     */
+    public int getEncodedSize() {
+        return encoded.length;
+    }
+
+    @Override
     public String toString() {
         return code.toString();
     }

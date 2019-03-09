@@ -13,7 +13,7 @@ public class DefaultScanResponse extends DefaultManagementResponse implements Sc
 
     public static final ScanResponse of(final UUID uuid, final List<SerialPort> ports) {
         assertNotNull(uuid, "The transaction id (uuid) cannot be null");
-        assertNotNull(ports, "The list of ports cannot be null");
+        assertNotNull(ports, "The list success ports cannot be null");
         return new DefaultScanResponse(uuid, ports);
     }
 

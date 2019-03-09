@@ -70,7 +70,7 @@ public class ModemManagerActor implements Actor, LoggingSupport {
             } else {
                 final String actorName = connect.getPort().toString();
                 final ActorRef modem = ctx().actorOf(actorName, ModemActor.props(threadPool, port));
-                // modem.tell(ModemConnect.of(), self());
+                // modem.tell(ModemConnect.success(), self());
             }
 
         } else {
