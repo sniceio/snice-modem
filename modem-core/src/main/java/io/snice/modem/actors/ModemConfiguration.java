@@ -41,6 +41,13 @@ public class ModemConfiguration {
 
     private final List<ItuResultCodes> ituResultCodes;
 
+    private final CommandConfiguration cmdConfig;
+
+    public CommandConfiguration getCommandConfiguration() {
+        return cmdConfig;
+    }
+
+
     /**
      * Whenever we need to reset the modem, which we'll do upon starting and if we run into
      * any errors and/or unknown state, we will execute these commands in the specified
@@ -59,7 +66,8 @@ public class ModemConfiguration {
                                final List<AtCommand> resetCommands,
                                final char s3,
                                final char s4,
-                               final boolean verboseResponseFormat) {
+                               final boolean verboseResponseFormat,
+                               final CommandConfiguration cmdConfig) {
         this.baudRate = baudRate;
         this.readTimeout = readTimeout;
         this.inputStreamConfig = inputStreamConfig;
@@ -76,6 +84,7 @@ public class ModemConfiguration {
         // Therefore, we will simply use them all but prefer the ones we are trying to get to
         this.ituResultCodes = new ArrayList<>(ItuResultCodes.initialize(verboseResponseFormat, s3, s4));
         this.ituResultCodes.addAll(ItuResultCodes.initialize(!verboseResponseFormat, s3, s4));
+        this.cmdConfig = cmdConfig;
     }
 
     public Optional<ItuResultCodes> matchResultCode(final Buffer buffer) {
@@ -190,6 +199,8 @@ public class ModemConfiguration {
 
         private List<AtCommand> resetCommands;
 
+        private CommandConfiguration cmdConfigs;
+
         private static final AtCommand[] DEFAULT_RESET_COMMANDS = new AtCommand[] {
                 AtCommand.of("AT"),
                 AtCommand.of("ATZ"),
@@ -229,6 +240,13 @@ public class ModemConfiguration {
             return this;
         }
 
+        @JsonProperty("commandsConfig")
+        public Builder withCommandsConfig(final CommandConfiguration config) {
+            assertNotNull(config, "The configuration cannot be null");
+            cmdConfigs = config;
+            return this;
+        }
+
         @JsonProperty("out")
         public Builder withOutputStreamConfig(final OutputStreamConfig config) {
             assertNotNull(config, "The output configuration cannot be null");
@@ -256,7 +274,7 @@ public class ModemConfiguration {
 
         public ModemConfiguration build() {
             return new ModemConfiguration(baudRate, readTimeout, ensureInputConfig(),
-                    ensureOutputConfig(), ensureResetCommands(), s3, s4, verboseResponseFormat);
+                    ensureOutputConfig(), ensureResetCommands(), s3, s4, verboseResponseFormat, ensureCommandConfig());
         }
 
         private List<AtCommand> ensureResetCommands() {
@@ -265,6 +283,10 @@ public class ModemConfiguration {
             }
 
             return resetCommands;
+        }
+
+        private CommandConfiguration ensureCommandConfig() {
+            return cmdConfigs != null ? cmdConfigs : CommandConfiguration.of().build();
         }
 
         private InputStreamConfig ensureInputConfig() {

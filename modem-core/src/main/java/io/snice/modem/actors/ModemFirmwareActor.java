@@ -102,7 +102,11 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
 
         if (msg instanceof Terminated) {
             // only one that shouldn't go to the FSM
-            processChildDeath((Terminated)msg);
+            processChildDeath((Terminated) msg);
+        } else if (msg instanceof AtResponse) {
+            final AtResponse response = (AtResponse) msg;
+            System.err.println("Need to send back to the caller of this transaction: " + ((AtResponse) msg).getTransactionId());
+            System.err.println(response.getResponse());
         } else {
             if (msg instanceof ModemEvent) {
                 final ModemEvent transaction = (ModemEvent)msg;

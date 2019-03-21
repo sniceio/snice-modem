@@ -26,6 +26,10 @@ public class FirmwareFsmReadyStateTest extends FirmwareFsmTestBase {
         fsm.onEvent(AtCommand.of("AT+COPS=?"));
         verify(ctx).writeToModem(AtCommand.of("AT+COPS=?"));
         assertThat(fsm.getState(), is(FirmwareState.WAIT));
+
+        // for every AT command we write, we will schedule a timeout
+        // so that if the command doesn't complete, we have to abort
+        verify(scheduler).schedule(anyObject(), anyObject());
     }
 
     /**

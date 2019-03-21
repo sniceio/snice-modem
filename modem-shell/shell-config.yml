@@ -25,6 +25,20 @@ modem:
     appendEolIfNecessary: false # the S3 & S4 character settings dictates this
     alwaysFlush: true
 
+# Configuration for each command in the system. The main
+# thing here is that each command may take a different
+# amount of time to complete but we still need to make
+# sure that we eventually will abort a command. E.g.
+# AT+COPS=? may take up to a minute to execute so we
+# must allow for that but ATI should return pretty much
+# right away. As such, we need to be able to configure the
+# expected timeout for all the different commands
+commands:
+  # Unless otherwise specified, we will maximum wait for
+  # this many milliseconds before we assume we failed to
+  # execute the command.
+  defaultTimeoutMs: 1000
+
 hektor:
   dispatchers:
     my-dispatcher:

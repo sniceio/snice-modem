@@ -30,7 +30,8 @@ public class FirmwareFsmResetStateTest extends FirmwareFsmTestBase {
 
         // We should now try and write the first reset command to the
         // modem...
-        verify(ctx).writeToModem(AtCommand.of("ATZ"));
+        ensureCommandProcessing("ATZ", 1000);
+        // verify(ctx).writeToModem(AtCommand.of("ATZ"));
 
         // Then pretend that we got back some stuff from the modem
         // as part success an external read loop.

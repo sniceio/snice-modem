@@ -48,6 +48,7 @@
         <hektor.version>0.0.1-SNAPSHOT</hektor.version>
         <logback.version>1.2.3</logback.version>
         <sl4j.version>1.7.25</sl4j.version>
+        <jackson.version>2.9.8</jackson.version>
         <fazecast.version>2.4.0</fazecast.version>
         <junit.version>4.8.2</junit.version>
         <mockito.version>1.8.5</mockito.version>
@@ -130,6 +131,50 @@
                 <artifactId>logback-classic</artifactId>
                 <version>${logback.version}</version>
                 <scope>runtime</scope>
+            </dependency>
+
+            <!-- For dealing with everything json -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <!-- For reading yaml files and converting them to json -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-yaml</artifactId>
+                <version>${jackson.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <!-- For Java8 data types support such as Optional-->
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jdk8</artifactId>
+                <version>${jackson.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
+            </dependency>
+
+            <!-- For Java8 date/time support such as Duration -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${jackson.version}</version>
+                <type>jar</type>
+                <scope>compile</scope>
             </dependency>
 
             <!-- Test Dependencies -->

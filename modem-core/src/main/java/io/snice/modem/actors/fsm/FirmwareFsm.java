@@ -11,6 +11,7 @@ import io.snice.modem.actors.events.AtResponse;
 import io.snice.modem.actors.events.ModemDisconnect;
 import io.snice.modem.actors.events.ModemReset;
 
+import java.time.Duration;
 import java.util.Optional;
 
 public class FirmwareFsm {
@@ -104,6 +105,9 @@ public class FirmwareFsm {
     }
 
     private static void writeToModem(final AtCommand cmd, final FirmwareContext ctx, final FirmwareData data) {
+        final Duration timeout = ctx.getConfiguration().getCommandConfiguration().getTimeout(cmd);
+        ctx.getScheduler().schedule(() -> "timeout for " + cmd.getTransactionId(), timeout);
+
         data.setCurrentCommand(cmd);
         ctx.writeToModem(cmd);
     }
@@ -116,13 +120,15 @@ public class FirmwareFsm {
      */
     private static void stateDefinitionWait(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> wait) {
 
+        // TODO: we need to setup timeouts for this state depending on the command.
+        // TODO: e.g. the AT+COPS=? will take some time but ATI will not.
+        // TODO: if there is a timeout then we should
+
         // TODO: perhaps enchance Hektor so that the onEnterAction could also optionally
         // TODO: get the event that took it to that state. That way we don't have to save it
         // TODO: away like this...
         wait.transitionTo(FirmwareState.PROCESSING).onEvent(StreamToken.class).withAction((token, ctx, data) -> data.saveStreamToken(token));
         wait.transitionTo(FirmwareState.WAIT).onEvent(AtCommand.class).withAction((cmd, ctx, data) -> data.stashCommand(cmd));
-
-        // TODO: one could see that perhaps a CANCEL would be allowed.
     }
 
     /**

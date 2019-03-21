@@ -1,10 +1,12 @@
 package io.snice.modem.actors.fsm;
 
 import io.hektor.fsm.FSM;
+import io.hektor.fsm.Scheduler;
 import io.snice.modem.actors.ModemConfiguration;
 import io.snice.modem.actors.events.AtCommand;
 import org.junit.Before;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.function.BiConsumer;
 
@@ -17,7 +19,7 @@ import static org.mockito.Mockito.when;
 public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareContext, FirmwareData> {
 
     protected FSM<FirmwareState, FirmwareContext, FirmwareData> fsm;
-    protected CachingFsmScheduler cachingFsmScheduler;
+    protected Scheduler scheduler;
     protected FirmwareData data;
     protected FirmwareContext ctx;
     protected ModemConfiguration config;
@@ -28,7 +30,6 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
     @Before
     public void setup() throws Exception {
         super.setup();
-        this.cachingFsmScheduler = new CachingFsmScheduler();
         init();
     }
 
@@ -42,7 +43,8 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
         } else {
             config = ModemConfiguration.of().withResetCommands(resetCommands).build();
         }
-        ctx = mockFirmwareContext(cachingFsmScheduler, config);
+        scheduler = mock(Scheduler.class);
+        ctx = mockFirmwareContext(scheduler, config);
         init(ctx);
     }
 
@@ -52,7 +54,7 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
         this.fsm.start();
     }
 
-    protected FirmwareContext mockFirmwareContext(final CachingFsmScheduler scheduler, final ModemConfiguration config) {
+    protected FirmwareContext mockFirmwareContext(final Scheduler scheduler, final ModemConfiguration config) {
         final FirmwareContext ctx = mock(FirmwareContext.class);
         when(ctx.getConfiguration()).thenReturn(config);
         when(ctx.getScheduler()).thenReturn(scheduler);
@@ -69,6 +71,26 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
         fsm.onEvent(AtCommand.of(cmd));
         verify(ctx).writeToModem(AtCommand.of(cmd));
         assertThat(fsm.getState(), is(FirmwareState.WAIT));
+    }
+
+    /**
+     * Whenever we write a command to the modem we will also ALWAYS be scheduling a transaction timeout
+     * for that command, in case it never actually finish. Ensure this is done correctly
+     * always
+     * @param cmd
+     * @param timeout
+     */
+    protected void ensureCommandProcessing(AtCommand cmd, Duration timeout) {
+        verify(ctx).writeToModem(cmd);
+
+    }
+
+    protected void ensureCommandProcessing(String cmd, Duration timeout) {
+        ensureCommandProcessing(AtCommand.of(cmd), timeout);
+    }
+
+    protected void ensureCommandProcessing(String cmd, int timeout) {
+        ensureCommandProcessing(AtCommand.of(cmd), Duration.ofMillis(timeout));
     }
 
 }
