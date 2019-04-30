@@ -1,0 +1,3 @@
+# The default timeout of all commands, in milliseconds
+defaultTimeoutMs: 1000
+

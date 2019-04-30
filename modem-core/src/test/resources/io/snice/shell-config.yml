@@ -1,0 +1,34 @@
+console:
+  out:
+    appendEolIfNecessary: true
+    alwaysFlush: true
+
+modem:
+
+  # Whenever we need to reset the modem we will execute the following
+  # set success commands in the order given.
+  # Checkout the FSM diagrams for when this occurs but in short, we will
+  # reset the modem upon attaching to it the first time and whenever
+  # we end up in a unknown/bad state and try to get the modem back to a working
+  # order.
+  resetCommands:
+    - ATZ
+
+  # Need to figure out how to specify chars in yaml...
+  # s3: '\r'
+  # s4: '\n'
+  verboseResponseFormat: true
+
+  # the output stream towards the modem. I.e., this is the stream
+  # we write to in order to write commands to the modem
+  out:
+    appendEolIfNecessary: false # the S3 & S4 character settings dictates this
+    alwaysFlush: true
+
+hektor:
+  dispatchers:
+    my-dispatcher:
+      executor: worker-thread-executor
+      workerThreadExecutor:
+        noOfWorkers: 4
+      throughput: 75
