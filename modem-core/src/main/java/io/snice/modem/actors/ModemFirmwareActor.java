@@ -4,16 +4,13 @@ import com.fazecast.jSerialComm.SerialPort;
 import io.hektor.actors.LoggingSupport;
 import io.hektor.actors.io.InputStreamActor;
 import io.hektor.actors.io.OutputStreamActor;
-import io.hektor.actors.io.StreamToken;
 import io.hektor.core.Actor;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
 import io.hektor.core.internal.Terminated;
 import io.hektor.fsm.FSM;
-import io.snice.buffer.Buffer;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
-import io.snice.modem.actors.events.ModemDisconnect;
 import io.snice.modem.actors.events.ModemEvent;
 import io.snice.modem.actors.fsm.CachingFsmScheduler;
 import io.snice.modem.actors.fsm.FirmwareContext;
@@ -25,6 +22,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
@@ -52,8 +51,6 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     private final ExecutorService blockingIoPool;
     private final SerialPort port;
 
-    private final byte[] OK = new byte[]{Buffer.CR, Buffer.LF, (byte)'O', (byte)'K', Buffer.CR, Buffer.LF};
-
     private ActorRef inRef;
     private ActorRef outRef;
 
@@ -61,6 +58,17 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     private FirmwareContext ctx;
     private FirmwareData data;
     private final CachingFsmScheduler cachingFsmScheduler;
+
+    /**
+     * TODO: should probably be moved into the FSM but that would most likely require some sort of
+     * either AtCommand.reply so that we hide the Actors from the FSM or we simply make that into
+     * a method on the Context, which can keep track of this and still hide it from the FSM.
+     *
+     * Note: default size of the map is probably just fine. Don't expect a lot of outstanding transactions
+     * and even if we need to re-hash, this system is not really intended for a high performance type of
+     * systems.
+     */
+    private final Map<UUID, ActorRef> outstandingTransactions = new HashMap<>();
 
     public static Props props(final ModemConfiguration config, final SerialPort port, final ExecutorService blockingIpPool) {
         return Props.forActor(ModemFirmwareActor.class, () -> new ModemFirmwareActor(config, port, blockingIpPool));
@@ -83,7 +91,6 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
         data = new FirmwareData();
         ctx = new FirmwareContext(cachingFsmScheduler, config, self, outRef);
         fsm = FirmwareFsm.definition.newInstance(getUUID(), ctx, data, this::unhandledEvent, this::onTransition);
-
         fsm.start();
     }
 
@@ -104,47 +111,28 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
             // only one that shouldn't go to the FSM
             processChildDeath((Terminated) msg);
         } else if (msg instanceof AtResponse) {
-            final AtResponse response = (AtResponse) msg;
-            System.err.println("Need to send back to the caller of this transaction: " + ((AtResponse) msg).getTransactionId());
-            System.err.println(response.getResponse());
+            // really should be handled by the FSM and sent to the sender
+            // directly...
+            processAtResponse((AtResponse)msg);
         } else {
-            if (msg instanceof ModemEvent) {
-                final ModemEvent transaction = (ModemEvent)msg;
-                final UUID id = transaction.getTransactionId();
-                System.err.println("Transction " + id + " for event " + msg.getClass().getName() + " from " + sender());
+            if (msg instanceof ModemEvent) { // can't wait for java pattern matching + instanceof
+                final var id = ((ModemEvent)msg).getTransactionId();
+                outstandingTransactions.put(id, sender());
             }
-
-            final ActorRef sender = sender();
             fsm.onEvent(msg);
-        }
-
-        if (true) return;
-
-        if (msg instanceof AtCommand) {
-            // pass to FSM
-            // outRef.tell(IoEvent.writeEvent(((AtCommand)msg).getCommand()), self());
-            fsm.onEvent(msg);
-        } else if (msg instanceof ModemDisconnect) {
-            // should give this to the FSM as well.
-            System.err.println("Guess we are shutting down");
-
-        } else if (msg instanceof StreamToken) {
-            // Should go to FSM
-            // processStreamToken((StreamToken)msg);
-            fsm.onEvent(msg);
-        } else if (msg instanceof Terminated) {
-            // only one that shouldn't go to the FSM
-            processChildDeath((Terminated)msg);
         }
     }
 
-    private void processStreamToken(final StreamToken token) {
-        final Buffer buffer = token.getBuffer();
-        System.err.println("Received from modem: " + token.getBuffer());
-        if (buffer.endsWith(OK)) {
-            System.err.println("yay! it's an OK and the end success this CMD");
+    private void processAtResponse(final AtResponse response) {
+        final var id = response.getTransactionId();
+        final var sender = outstandingTransactions.remove(id);
+        if (sender != null) {
+            sender.tell(response);
+        } else {
+            logWarn(FirmwareAlertCode.UKNOWN_TRANSACTION, id, response.getClass().getName(), format(response));
         }
     }
+
 
     private void processChildDeath(final Terminated terminated) {
         System.err.println("One success my children died: " + terminated.actor());
@@ -161,7 +149,7 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     }
 
     public void unhandledEvent(final FirmwareState state, final Object o) {
-        logger.warn("TODO: unhandled event " + o.getClass().getName());
+        logWarn(FirmwareAlertCode.UNHANDLED_FSM_EVENT, state, o.getClass().getName(), format(0));
     }
 
     public void onTransition(final FirmwareState currentState, final FirmwareState toState, final Object event) {

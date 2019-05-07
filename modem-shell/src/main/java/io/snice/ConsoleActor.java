@@ -43,6 +43,7 @@ public class ConsoleActor implements Actor, Runnable {
 
         System.err.println("> Say something");
         System.err.println("> ");
+
         executor.submit(this);
     }
 }

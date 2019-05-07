@@ -47,6 +47,10 @@ public class FirmwareContext implements Context {
      * Yes, it should be. I think. Let's go with WAITING (as in waiting for response from modem) and
      * PROCESSING (as in processing response). Processing is always a transent state.
      *
+     * Update: May 5th, 2019
+     * Alright, now that we have transient states, we should probably push the response
+     * back to the caller based on the transaction instead of doing that in the  {@link io.snice.modem.actors.ModemFirmwareActor}
+     *
      * @param response
      */
     public void processResponse(final AtResponse response) {
@@ -56,7 +60,6 @@ public class FirmwareContext implements Context {
     public ModemConfiguration getConfiguration() {
         return config;
     }
-
 
     @Override
     public Scheduler getScheduler() {

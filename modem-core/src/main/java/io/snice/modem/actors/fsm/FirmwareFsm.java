@@ -3,7 +3,6 @@ package io.snice.modem.actors.fsm;
 import io.hektor.actors.io.StreamToken;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
-import io.hektor.fsm.builder.FSMBuilder;
 import io.hektor.fsm.builder.StateBuilder;
 import io.snice.buffer.Buffer;
 import io.snice.modem.actors.events.AtCommand;
@@ -11,7 +10,6 @@ import io.snice.modem.actors.events.AtResponse;
 import io.snice.modem.actors.events.ModemDisconnect;
 import io.snice.modem.actors.events.ModemReset;
 
-import java.time.Duration;
 import java.util.Optional;
 
 public class FirmwareFsm {
@@ -19,8 +17,7 @@ public class FirmwareFsm {
     public static final Definition<FirmwareState, FirmwareContext, FirmwareData> definition;
 
     static {
-        final FSMBuilder<FirmwareState, FirmwareContext, FirmwareData> builder =
-                FSM.of(FirmwareState.class).ofContextType(FirmwareContext.class).withDataType(FirmwareData.class);
+        final var builder = FSM.of(FirmwareState.class).ofContextType(FirmwareContext.class).withDataType(FirmwareData.class);
 
         stateDefinitionsReady(builder.withInitialState(FirmwareState.READY));
         stateDefinitionsReset(builder.withTransientState(FirmwareState.RESET));
@@ -99,13 +96,13 @@ public class FirmwareFsm {
     }
 
     private static void sendResetCommand(final Object ignore, final FirmwareContext ctx, final FirmwareData data) {
-        final Optional<AtCommand> optional = data.getNextResetCommand();
+        final var optional = data.getNextResetCommand();
         data.isResetting(optional.isPresent());
         optional.ifPresent(cmd -> writeToModem(cmd, ctx, data));
     }
 
     private static void writeToModem(final AtCommand cmd, final FirmwareContext ctx, final FirmwareData data) {
-        final Duration timeout = ctx.getConfiguration().getCommandConfiguration().getTimeout(cmd);
+        final var timeout = ctx.getConfiguration().getCommandConfiguration().getTimeout(cmd);
         ctx.getScheduler().schedule(() -> "timeout for " + cmd.getTransactionId(), timeout);
 
         data.setCurrentCommand(cmd);
@@ -178,7 +175,7 @@ public class FirmwareFsm {
     private static void processStreamToken(final FirmwareContext ctx, final FirmwareData data) {
 
         // TODO: as mentioned earlier, would be nicer if we got the actual event here as well so we
-        // TODO:  don't have to save it away and then "consumeSreamToken". Kind success annyoing
+        // TODO:  don't have to save it away and then "consumeSreamToken". Kind of annoying
         final StreamToken token = data.consumeStreamToken();
         final Buffer buffer = token.getBuffer();
         final Optional<ItuResultCodes> optional = ctx.getConfiguration().matchResultCode(buffer);

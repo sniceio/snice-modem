@@ -10,6 +10,7 @@ import io.hektor.core.Props;
 import io.hektor.core.internal.Terminated;
 import io.hektor.fsm.FSM;
 import io.snice.modem.actors.events.AtCommand;
+import io.snice.modem.actors.events.AtResponse;
 import io.snice.modem.actors.events.ModemConnectSuccess;
 import io.snice.modem.actors.events.ModemEvent;
 import io.snice.modem.actors.fsm.CachingExecutorService;
@@ -48,7 +49,6 @@ public class ModemActor implements Actor, LoggingSupport {
     private ActorRef firmwareActor;
     private final ModemConfiguration config;
 
-
     public static Props props(final ExecutorService blockingIoPool, final SerialPort port) {
         assertNotNull(blockingIoPool, "The thread pool used for blocking IO operations cannot be null");
         assertNotNull(port, "The serial port cannot be null");
@@ -68,8 +68,8 @@ public class ModemActor implements Actor, LoggingSupport {
     @Override
     public void start() {
         logInfo("Starting");
-        this.fsm = ModemFsm.definition.newInstance(getUUID(), modemCtx, data, this::unhandledEvent, this::onTransition);
-        this.fsm.start();
+        fsm = ModemFsm.definition.newInstance(getUUID(), modemCtx, data, this::unhandledEvent, this::onTransition);
+        fsm.start();
         postInvocation();
     }
 
@@ -85,7 +85,7 @@ public class ModemActor implements Actor, LoggingSupport {
 
 
     public void unhandledEvent(final ModemState modemState, final Object o) {
-        logger.warn("TODO: unhandled event " + o.getClass().getName());
+        logWarn(ModemAlertCode.UNHANDLED_FSM_EVENT, modemState, o.getClass().getName(), format(0));
     }
 
     public void onTransition(final ModemState currentState, final ModemState toState, final Object event) {
@@ -100,8 +100,14 @@ public class ModemActor implements Actor, LoggingSupport {
             fsm.onEvent(msg);
             postInvocation();
         } else if (msg instanceof AtCommand) {
-            // should be given to the modem actor as well... which really would just return
-            // it to the actor for dispatching...
+            // Should we pass this via the Modem FSM as well? Not sure if it serves
+            // any particular purpose at this point. The FirmwareFSM should keep track
+            // of the things.
+            //
+            // E.g., if we do not get a response from the modem after some time, the FirmwareFSM
+            // should try and recover. If it is unable to do so, perhaps it should just be killed
+            // and then the ModemActor will process the actor death and, if it chooses to do so,
+            // start over and try to reconnect again...
             sendToModem((AtCommand) msg);
         } else if (msg instanceof StreamToken) {
             final StreamToken token = (StreamToken) msg;
@@ -112,6 +118,8 @@ public class ModemActor implements Actor, LoggingSupport {
             logInfo("Received a Lifecycle Terminated event: {}", dead.getActor());
         } else if (msg instanceof Terminated) {
             processChildDeath((Terminated) msg);
+        } else if (msg instanceof AtResponse) {
+            System.err.println(msg);
         } else {
             logInfo("Passing event to Modem FSM");
 
@@ -125,6 +133,10 @@ public class ModemActor implements Actor, LoggingSupport {
     }
 
     private void processChildDeath(final Terminated terminated) {
+        // TODO: we should start the firmware actor once again
+        // unless we have already done so X number of times, at which
+        // point we will give up and "die" ourselves and let the next
+        // level handle it...
 
     }
 
@@ -150,7 +162,7 @@ public class ModemActor implements Actor, LoggingSupport {
 
     private void sendToModem(final ModemEvent event) {
         if (firmwareActor != null) {
-            firmwareActor.tell(event, self());
+            firmwareActor.tell(event, sender());
         } else {
             logInfo("Unable to process {}, we are not connected to the modem", event);
         }
