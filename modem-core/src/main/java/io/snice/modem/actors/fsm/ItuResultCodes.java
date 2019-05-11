@@ -30,6 +30,9 @@ public class ItuResultCodes {
             results.add(new ItuResultCodes(rc, encoded));
         });
 
+        // add the special +CME ERROR: Doesn't seem to match the given pattern
+        // so we'll do it this hacky way...
+        results.add(new ItuCmeError());
         return Collections.unmodifiableList(results);
     }
 
@@ -64,12 +67,23 @@ public class ItuResultCodes {
         return buffer.endsWith(encoded);
     }
 
+    private static class ItuCmeError extends ItuResultCodes {
+        private ItuCmeError() {
+            super(Code.CME_ERROR, new byte[]{});
+        }
+
+        public boolean match(final Buffer buffer) {
+            return buffer.toString().toLowerCase().contains("+CME ERROR:".toLowerCase());
+        }
+    }
+
     public enum Code {
         OK(0, "OK", true),
         CONNECT(1, "CONNECT", false),
         RING(2, "RING", false),
         NO_CARRIER(3, "NO CARRIER", true),
         ERROR(4, "ERROR", true),
+        CME_ERROR(5, "CME_ERROR", true), // added this myself. Not in standard...
         NO_DIALTONE(6, "NO DIALTONE", true),
         BUSY(7, "BUSY", true),
         NO_ANSWER(8, "NO ANSWER", true);

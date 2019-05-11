@@ -47,6 +47,9 @@ public class FirmwareFsm {
         ready.transitionTo(FirmwareState.RESET).onEvent(ModemReset.class).withGuard(FirmwareFsm::isConfiguredWithResetCommands);
         ready.transitionTo(FirmwareState.READY).onEvent(ModemReset.class).consume();
 
+        // Seems like we can get unsolicited codes back at any given point so
+        ready.transitionTo(FirmwareState.READY).onEvent(StreamToken.class).withAction(t -> System.err.println("Got StreamToekn while in READY " + t.getBuffer().toString()));
+
         ready.transitionTo(FirmwareState.WAIT).onEvent(AtCommand.class).withAction(FirmwareFsm::writeToModem);
         ready.transitionTo(FirmwareState.TERMINATED).onEvent(ModemDisconnect.class);
     }
@@ -82,6 +85,7 @@ public class FirmwareFsm {
     private static void onEnterReset(final FirmwareContext ctx, final FirmwareData data){
         // new reset cycle, assuming we are configured with any reset
         // commands at all. If we are not, we'll go back to the READY state
+        System.err.println("Reset commands are: " + ctx.getConfiguration().getResetCommands());
         if (!data.isResetting() && ctx.getConfiguration().hasResetCommands()) {
             data.resetTheResetCommands(ctx.getConfiguration().getResetCommands());
             data.isResetting(true);
@@ -175,7 +179,7 @@ public class FirmwareFsm {
     private static void processStreamToken(final FirmwareContext ctx, final FirmwareData data) {
 
         // TODO: as mentioned earlier, would be nicer if we got the actual event here as well so we
-        // TODO:  don't have to save it away and then "consumeSreamToken". Kind of annoying
+        // TODO:  don't have to save it away and then "consumeStreamToken". Kind of annoying
         final StreamToken token = data.consumeStreamToken();
         final Buffer buffer = token.getBuffer();
         final Optional<ItuResultCodes> optional = ctx.getConfiguration().matchResultCode(buffer);

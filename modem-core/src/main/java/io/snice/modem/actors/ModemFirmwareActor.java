@@ -4,6 +4,7 @@ import com.fazecast.jSerialComm.SerialPort;
 import io.hektor.actors.LoggingSupport;
 import io.hektor.actors.io.InputStreamActor;
 import io.hektor.actors.io.OutputStreamActor;
+import io.hektor.actors.io.StreamToken;
 import io.hektor.core.Actor;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
@@ -127,6 +128,7 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
         final var id = response.getTransactionId();
         final var sender = outstandingTransactions.remove(id);
         if (sender != null) {
+            System.err.println("Response back to sender: " + sender);
             sender.tell(response);
         } else {
             logWarn(FirmwareAlertCode.UKNOWN_TRANSACTION, id, response.getClass().getName(), format(response));
@@ -157,6 +159,11 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     }
 
     private static final String format(final Object object) {
+        if (object instanceof StreamToken) {
+            final var buffer = ((StreamToken)object).getBuffer();
+            return "StreamToken<bytes=" + buffer.capacity() + ">";
+        }
+
         try {
             final ModemEvent event = (ModemEvent) object;
             return event.toString();

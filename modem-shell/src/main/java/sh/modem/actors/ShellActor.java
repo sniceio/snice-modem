@@ -12,6 +12,7 @@ import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
 import io.snice.buffer.ReadableBuffer;
 import io.snice.modem.actors.events.AtCommand;
+import io.snice.modem.actors.events.AtResponse;
 import io.snice.modem.actors.messages.ManagementRequest;
 import io.snice.modem.actors.messages.ManagementRequest.ConnectEvent;
 import io.snice.modem.actors.messages.ManagementResponse;
@@ -27,6 +28,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
@@ -53,6 +55,7 @@ public class ShellActor implements Actor, LoggingSupport {
     private final ShellConfig config;
     private final ExecutorService blockingIoPool;
     private final ActorRef modemManager;
+    private Optional<ActorRef> modem = Optional.empty();
     private final InputStream in;
     private final OutputStream out;
 
@@ -78,11 +81,12 @@ public class ShellActor implements Actor, LoggingSupport {
 
     @Override
     public void onReceive(final Object msg) {
-        logDebug("Received: {}", msg);
         if (msg instanceof StreamToken) {
             processCommandLine((StreamToken)msg);
         } else if (msg instanceof ManagementResponse) {
             processModemManagementResult((ManagementResponse)msg);
+        } else if (msg instanceof AtResponse) {
+            System.err.println(((AtResponse) msg).toAtResponse().getResponse().toString());
         }
     }
 
@@ -97,13 +101,9 @@ public class ShellActor implements Actor, LoggingSupport {
                 });
             }
         } else if (result.isConnectResult()) {
-
-        }
-    }
-
-    private void processConnectResponse(final ConnectResponse response) {
-        if (response.isFailure()) {
-            console.tell(IoEvent.writeEvent(((ErrorConnectResponse)response).getError()));
+            // TODO: this is not pushed through just yet...
+            System.err.println(result.toConnectResult());
+            modem = result.toConnectResult().getModemRef();
         }
     }
 
@@ -121,10 +121,14 @@ public class ShellActor implements Actor, LoggingSupport {
     }
 
     private void processAtCommand(final Buffer cmd) {
-        System.err.println("AT: command: " + cmd + "<----");
-        final ActorPath modem = modemManager.path().createChild("ttyusb2");
-        ctx().lookup(modem).ifPresent(ref -> {
-            System.err.println("Sendint to modem");
+
+        // TODO: fix because we haven't pushed through the ModemConnect result back to the caller.
+        if (modem.isEmpty()) {
+            final var path = modemManager.path().createChild("ttyusb2");
+            modem = ctx().lookup(path);
+        }
+
+        modem.ifPresent(ref -> {
             ref.tell(AtCommand.of(cmd), self());
         });
     }
