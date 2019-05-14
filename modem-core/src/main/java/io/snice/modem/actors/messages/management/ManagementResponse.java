@@ -1,7 +1,8 @@
-package io.snice.modem.actors.messages;
+package io.snice.modem.actors.messages.management;
 
 import com.fazecast.jSerialComm.SerialPort;
 import io.hektor.core.ActorRef;
+import io.snice.modem.actors.messages.TransactionMessage;
 
 import java.util.List;
 import java.util.Optional;
@@ -34,7 +35,6 @@ public interface ManagementResponse extends TransactionMessage {
     default ScanResponse toScanResult() {
         throw new ClassCastException("Unable to cast " + getClass().getName() + " into a " + ScanResponse.class.getName());
     }
-
 
     interface ConnectResponse extends ManagementResponse {
 

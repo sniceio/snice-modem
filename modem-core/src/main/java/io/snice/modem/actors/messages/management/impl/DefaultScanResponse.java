@@ -1,7 +1,7 @@
-package io.snice.modem.actors.messages.impl;
+package io.snice.modem.actors.messages.management.impl;
 
 import com.fazecast.jSerialComm.SerialPort;
-import io.snice.modem.actors.messages.ManagementResponse.ScanResponse;
+import io.snice.modem.actors.messages.management.ManagementResponse.ScanResponse;
 
 import java.util.Collections;
 import java.util.List;

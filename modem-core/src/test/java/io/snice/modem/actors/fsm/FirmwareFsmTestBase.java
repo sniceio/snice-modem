@@ -8,6 +8,7 @@ import org.junit.Before;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.BiConsumer;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -38,11 +39,16 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
     }
 
     protected void init(final AtCommand... resetCommands) {
-        if (resetCommands == null) {
-            config = ModemConfiguration.of().withResetCommands(Collections.EMPTY_LIST).build();
-        } else {
-            config = ModemConfiguration.of().withResetCommands(resetCommands).build();
-        }
+        config = ModemConfiguration.of().withResetCommands(resetCommands).build();
+        init(config);
+    }
+
+    protected void init(final List<AtCommand> resetCommands) {
+        config = ModemConfiguration.of().withResetCommands(resetCommands).build();
+        init(config);
+    }
+
+    protected void init(ModemConfiguration config) {
         scheduler = mock(Scheduler.class);
         ctx = mockFirmwareContext(scheduler, config);
         init(ctx);

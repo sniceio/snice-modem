@@ -3,10 +3,12 @@ package io.snice.modem.actors.events;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
+import io.snice.modem.actors.messages.modem.ModemMessage;
+import io.snice.modem.actors.messages.management.impl.TransactionMessageImpl;
 
 import java.util.Objects;
 
-public class AtCommand extends ModemEvent {
+public class AtCommand extends TransactionMessageImpl implements ModemMessage {
 
     private final Buffer command;
 

@@ -1,8 +1,10 @@
 package io.snice.modem.actors.fsm;
 
 import io.snice.modem.actors.events.AtCommand;
-import io.snice.modem.actors.events.ModemReset;
+import io.snice.modem.actors.messages.modem.ModemResetRequest;
 import org.junit.Test;
+
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -40,8 +42,8 @@ public class FirmwareFsmReadyStateTest extends FirmwareFsmTestBase {
      */
     @Test
     public void testResetNoResetCommandsConfigured() throws Exception {
-        init((AtCommand[])null);
-        fsm.onEvent(ModemReset.of());
+        init(List.of());
+        fsm.onEvent(ModemResetRequest.of());
         assertThat(fsm.getState(), is(FirmwareState.READY));
         verify(ctx, never()).writeToModem(anyObject());
     }

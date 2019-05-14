@@ -1,7 +1,7 @@
-package io.snice.modem.actors.messages.impl;
+package io.snice.modem.actors.messages.management.impl;
 
 import io.hektor.core.ActorRef;
-import io.snice.modem.actors.messages.ManagementResponse;
+import io.snice.modem.actors.messages.management.ManagementResponse;
 
 import java.util.Optional;
 import java.util.UUID;

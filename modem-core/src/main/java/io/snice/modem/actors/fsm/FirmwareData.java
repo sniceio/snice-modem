@@ -6,6 +6,8 @@ import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
+import io.snice.modem.actors.messages.modem.ModemResetRequest;
+import io.snice.modem.actors.messages.modem.ModemResetResponse;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,15 @@ public class FirmwareData implements Data {
     private final List<AtCommand> outstandingCommands = new ArrayList<>();
 
     private List<AtCommand> currentResetCommands;
+
+    private List<AtResponse> savedResetResponses;
+
+    /**
+     * We need to have this one saved separately because it will lead to many {@link AtCommand}s
+     * being generated and eventually we'll respond back to this one with all the commands
+     * that we executed.
+     */
+    private ModemResetRequest resetRequest;
 
     /**
      * The current command we have outstanding, i.e, we wrote it to the modem
@@ -54,8 +65,32 @@ public class FirmwareData implements Data {
     }
 
     public void saveResponse(final AtResponse response) {
-        assertNull(this.response, "We have unprocessed response, you have to prorcess that response first");
+        assertNull(this.response, "We have unprocessed response, you have to process that response first");
         this.response = response;
+    }
+
+    /**
+     * Because for the reset command we'll have potentially many commands/responses to save up before
+     * we generate a {@link ModemResetResponse}
+     */
+    public void saveResetResponse(final AtResponse response) {
+        if (savedResetResponses == null) {
+            savedResetResponses = new ArrayList<>();
+        }
+        savedResetResponses.add(response);
+    }
+
+    public Optional<ModemResetRequest> consumeResetRequest() {
+        final var maybe = Optional.ofNullable(resetRequest);
+        resetRequest = null;
+        return maybe;
+    }
+
+    public List<AtResponse> consumeResetResponse() {
+        final var copy = List.copyOf(savedResetResponses);
+        savedResetResponses = null;
+
+        return copy;
     }
 
     public boolean isResetting() {
@@ -81,6 +116,11 @@ public class FirmwareData implements Data {
         final StreamToken token = latestDataFromModem;
         latestDataFromModem = null;
         return token;
+    }
+
+    public void saveResetRequest(final ModemResetRequest req) {
+        assertNull(resetRequest, "You already have an outstanding reset request, that one must finish first");
+        resetRequest = req;
     }
 
     public void setCurrentCommand(final AtCommand cmd) {

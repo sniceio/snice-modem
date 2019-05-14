@@ -1,6 +1,9 @@
 package io.snice.modem.actors.events;
 
-public class ModemConnectFailure extends ModemEvent {
+import io.snice.modem.actors.messages.modem.ModemMessage;
+import io.snice.modem.actors.messages.management.impl.TransactionMessageImpl;
+
+public class ModemConnectFailure extends TransactionMessageImpl implements ModemMessage {
 
     private static final ModemConnectFailure EVENT = new ModemConnectFailure();
 

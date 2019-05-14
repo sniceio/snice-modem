@@ -12,7 +12,7 @@ import io.hektor.core.internal.Terminated;
 import io.hektor.fsm.FSM;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
-import io.snice.modem.actors.events.ModemEvent;
+import io.snice.modem.actors.messages.modem.ModemMessage;
 import io.snice.modem.actors.fsm.CachingFsmScheduler;
 import io.snice.modem.actors.fsm.FirmwareContext;
 import io.snice.modem.actors.fsm.FirmwareData;
@@ -46,6 +46,13 @@ import java.util.concurrent.ExecutorService;
 public class ModemFirmwareActor implements Actor, LoggingSupport {
     private static final Logger logger = LoggerFactory.getLogger(ModemFirmwareActor.class);
 
+    /**
+     * We will dispatch all {@link ModemMessage}s and unsolicited events to the parent.
+     * It will be up to it to e.g. dispatch those messages to the original caller.
+     * The firmware actor doesn't care. Note that in our running system, the parent will
+     * most likely be the {@link ModemActor}.
+     */
+    private final ActorRef parent;
     private final ActorRef self;
 
     private final ModemConfiguration config;
@@ -71,11 +78,12 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
      */
     private final Map<UUID, ActorRef> outstandingTransactions = new HashMap<>();
 
-    public static Props props(final ModemConfiguration config, final SerialPort port, final ExecutorService blockingIpPool) {
-        return Props.forActor(ModemFirmwareActor.class, () -> new ModemFirmwareActor(config, port, blockingIpPool));
+    public static Props props(final ActorRef parent, final ModemConfiguration config, final SerialPort port, final ExecutorService blockingIpPool) {
+        return Props.forActor(ModemFirmwareActor.class, () -> new ModemFirmwareActor(parent, config, port, blockingIpPool));
     }
 
-    private ModemFirmwareActor(final ModemConfiguration config, final SerialPort port, final ExecutorService blockingIpPool) {
+    private ModemFirmwareActor(final ActorRef parent, final ModemConfiguration config, final SerialPort port, final ExecutorService blockingIpPool) {
+        this.parent = parent;
         this.config = config;
         this.port = port;
         this.blockingIoPool = blockingIpPool;
@@ -90,7 +98,7 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
         startWriter();
 
         data = new FirmwareData();
-        ctx = new FirmwareContext(cachingFsmScheduler, config, self, outRef);
+        ctx = new FirmwareContext(cachingFsmScheduler, config, parent, self, outRef);
         fsm = FirmwareFsm.definition.newInstance(getUUID(), ctx, data, this::unhandledEvent, this::onTransition);
         fsm.start();
     }
@@ -109,35 +117,15 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     public void onReceive(final Object msg) {
 
         if (msg instanceof Terminated) {
-            // only one that shouldn't go to the FSM
+            // only one that shouldn't go to the FSM. Or perhaps it should?
             processChildDeath((Terminated) msg);
-        } else if (msg instanceof AtResponse) {
-            // really should be handled by the FSM and sent to the sender
-            // directly...
-            processAtResponse((AtResponse)msg);
         } else {
-            if (msg instanceof ModemEvent) { // can't wait for java pattern matching + instanceof
-                final var id = ((ModemEvent)msg).getTransactionId();
-                outstandingTransactions.put(id, sender());
-            }
             fsm.onEvent(msg);
         }
     }
 
-    private void processAtResponse(final AtResponse response) {
-        final var id = response.getTransactionId();
-        final var sender = outstandingTransactions.remove(id);
-        if (sender != null) {
-            System.err.println("Response back to sender: " + sender);
-            sender.tell(response);
-        } else {
-            logWarn(FirmwareAlertCode.UKNOWN_TRANSACTION, id, response.getClass().getName(), format(response));
-        }
-    }
-
-
     private void processChildDeath(final Terminated terminated) {
-        System.err.println("One success my children died: " + terminated.actor());
+        System.err.println("One of my children died: " + terminated.actor());
     }
 
     @Override
@@ -165,7 +153,7 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
         }
 
         try {
-            final ModemEvent event = (ModemEvent) object;
+            final ModemMessage event = (ModemMessage) object;
             return event.toString();
         } catch (final ClassCastException e) {
             return object.toString();

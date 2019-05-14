@@ -1,9 +1,9 @@
-package io.snice.modem.actors.messages.impl;
+package io.snice.modem.actors.messages.management.impl;
 
 import io.hektor.core.ActorRef;
 import io.snice.buffer.Buffer;
-import io.snice.modem.actors.messages.ManagementRequest;
-import io.snice.modem.actors.messages.ManagementResponse.ConnectResponse;
+import io.snice.modem.actors.messages.management.ManagementRequest;
+import io.snice.modem.actors.messages.management.ManagementResponse.ConnectResponse;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -32,6 +32,7 @@ public class DefaultConnectRequest extends DefaultManagementRequest implements M
 
     @Override
     public ConnectResponse createSuccecssResponse(final ActorRef modem) {
-        return null;
+        assertNotNull(modem, "The referencec to the modem cannot be null");
+        return new SuccessConnectResponse(getTransactionId(), modem);
     }
 }

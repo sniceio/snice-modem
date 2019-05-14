@@ -3,11 +3,10 @@ package io.snice.modem.actors;
 import com.fazecast.jSerialComm.SerialPort;
 import io.hektor.actors.LoggingSupport;
 import io.hektor.core.Actor;
-import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
 import io.snice.buffer.Buffer;
-import io.snice.modem.actors.messages.ManagementRequest;
-import io.snice.modem.actors.messages.ManagementRequest.ConnectEvent;
+import io.snice.modem.actors.messages.management.ManagementRequest;
+import io.snice.modem.actors.messages.management.ManagementRequest.ConnectEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +52,7 @@ public class ModemManagerActor implements Actor, LoggingSupport {
         if (msg instanceof ManagementRequest) {
             processManagementEvent((ManagementRequest)msg);
         } else {
-            logInfo("Got some odd event: {}", msg);
+            logWarn(ModemManagerAlertCode.UNKNOWN_MESSAGE_TYPE, msg);
         }
     }
 
@@ -68,15 +67,14 @@ public class ModemManagerActor implements Actor, LoggingSupport {
             if (port == null) {
                 sender().tell(connect.createErrorResponse("No such port"), self());
             } else {
-                final String actorName = connect.getPort().toString();
-                final ActorRef modem = ctx().actorOf(actorName, ModemActor.props(threadPool, port));
-                // modem.tell(ModemConnect.success(), self());
+                final var actorName = connect.getPort().toString();
+                final var modem = ctx().actorOf(actorName, ModemActor.props(threadPool, port));
+                sender().tell(connect.createSuccecssResponse(modem));
             }
 
         } else {
-            System.err.println("asdf");
+            logWarn(ModemManagerAlertCode.UNKNOWN_MANAGEMENT_MESSAGE, event);
         }
-
     }
 
     private SerialPort getPort(final Buffer port) {

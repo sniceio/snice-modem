@@ -12,7 +12,7 @@ import io.hektor.fsm.FSM;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
 import io.snice.modem.actors.events.ModemConnectSuccess;
-import io.snice.modem.actors.events.ModemEvent;
+import io.snice.modem.actors.messages.modem.ModemMessage;
 import io.snice.modem.actors.fsm.CachingExecutorService;
 import io.snice.modem.actors.fsm.CachingExecutorService.CallableHolder;
 import io.snice.modem.actors.fsm.CachingFsmScheduler;
@@ -142,7 +142,7 @@ public class ModemActor implements Actor, LoggingSupport {
 
     private void startFirmwareActor() {
         final SerialPort port = modemCtx.getPort();
-        firmwareActor = ctx().actorOf("firmware", ModemFirmwareActor.props(config, port, blockingIoPool));
+        firmwareActor = ctx().actorOf("firmware", ModemFirmwareActor.props(self(), config, port, blockingIoPool));
     }
 
     /**
@@ -160,7 +160,7 @@ public class ModemActor implements Actor, LoggingSupport {
         modemCtx.getNextModemEvent().ifPresent(this::sendToModem);
     }
 
-    private void sendToModem(final ModemEvent event) {
+    private void sendToModem(final ModemMessage event) {
         if (firmwareActor != null) {
             firmwareActor.tell(event, sender());
         } else {
@@ -212,7 +212,7 @@ public class ModemActor implements Actor, LoggingSupport {
 
     private static final String format(final Object object) {
         try {
-            final ModemEvent event = (ModemEvent) object;
+            final ModemMessage event = (ModemMessage) object;
             return event.toString();
         } catch (final ClassCastException e) {
             return object.toString();

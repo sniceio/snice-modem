@@ -50,7 +50,7 @@ public class FirmwareFsmProcessingStateTest extends FirmwareFsmTestBase {
                 + "Manufacturer: some whatever\r\n"
                 + "Model: blah\r\n"
                 + "last stuff");
-        verify(ctx).processResponse(AtResponse.success(AtCommand.of("ATI"), expectedContent));
+        verify(ctx).dispatchResponse(AtResponse.success(AtCommand.of("ATI"), expectedContent));
     }
 
     /**
@@ -66,7 +66,7 @@ public class FirmwareFsmProcessingStateTest extends FirmwareFsmTestBase {
 
         // finish the oustanding command and ensure we process the response...
         fsm.onEvent(StreamToken.of("ATI\r\nOK\r\n"));
-        verify(ctx).processResponse(AtResponse.success(AtCommand.of("ATI"), Buffers.wrap("ATI")));
+        verify(ctx).dispatchResponse(AtResponse.success(AtCommand.of("ATI"), Buffers.wrap("ATI")));
 
         // we should now write the next one to the modem and should once again
         // find ourselves in waiting...
@@ -75,7 +75,7 @@ public class FirmwareFsmProcessingStateTest extends FirmwareFsmTestBase {
 
         // and let's just finish that job and we should be back in READY again
         fsm.onEvent(StreamToken.of("Whatever that stashed did\r\nOK\r\n"));
-        verify(ctx).processResponse(AtResponse.success(AtCommand.of("AT+Stashed"), Buffers.wrap("Whatever that stashed did")));
+        verify(ctx).dispatchResponse(AtResponse.success(AtCommand.of("AT+Stashed"), Buffers.wrap("Whatever that stashed did")));
         assertThat(fsm.getState(), is(FirmwareState.READY));
     }
 

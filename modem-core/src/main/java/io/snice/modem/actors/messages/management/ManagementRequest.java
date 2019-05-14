@@ -1,12 +1,13 @@
-package io.snice.modem.actors.messages;
+package io.snice.modem.actors.messages.management;
 
 import com.fazecast.jSerialComm.SerialPort;
 import io.hektor.core.ActorRef;
 import io.snice.buffer.Buffer;
-import io.snice.modem.actors.messages.ManagementResponse.ConnectResponse;
-import io.snice.modem.actors.messages.ManagementResponse.ScanResponse;
-import io.snice.modem.actors.messages.impl.DefaultConnectRequest;
-import io.snice.modem.actors.messages.impl.DefaultScanRequest;
+import io.snice.modem.actors.messages.management.ManagementResponse.ConnectResponse;
+import io.snice.modem.actors.messages.management.ManagementResponse.ScanResponse;
+import io.snice.modem.actors.messages.TransactionMessage;
+import io.snice.modem.actors.messages.management.impl.DefaultConnectRequest;
+import io.snice.modem.actors.messages.management.impl.DefaultScanRequest;
 
 import java.util.List;
 

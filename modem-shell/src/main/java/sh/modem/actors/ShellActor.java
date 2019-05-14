@@ -5,7 +5,6 @@ import io.hektor.actors.io.ConsoleActor;
 import io.hektor.actors.io.IoEvent;
 import io.hektor.actors.io.StreamToken;
 import io.hektor.core.Actor;
-import io.hektor.core.ActorPath;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
 import io.snice.buffer.Buffer;
@@ -13,13 +12,11 @@ import io.snice.buffer.Buffers;
 import io.snice.buffer.ReadableBuffer;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
-import io.snice.modem.actors.messages.ManagementRequest;
-import io.snice.modem.actors.messages.ManagementRequest.ConnectEvent;
-import io.snice.modem.actors.messages.ManagementResponse;
-import io.snice.modem.actors.messages.ManagementResponse.ConnectResponse;
-import io.snice.modem.actors.messages.ManagementResponse.ScanResponse;
+import io.snice.modem.actors.messages.management.ManagementRequest;
+import io.snice.modem.actors.messages.management.ManagementRequest.ConnectEvent;
+import io.snice.modem.actors.messages.management.ManagementResponse;
+import io.snice.modem.actors.messages.management.ManagementResponse.ScanResponse;
 import io.snice.modem.actors.messages.TransactionMessage;
-import io.snice.modem.actors.messages.impl.ErrorConnectResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sh.modem.ShellConfig;
@@ -102,7 +99,7 @@ public class ShellActor implements Actor, LoggingSupport {
             }
         } else if (result.isConnectResult()) {
             // TODO: this is not pushed through just yet...
-            System.err.println(result.toConnectResult());
+            System.err.println("Ok, got the connect result: " + result.toConnectResult());
             modem = result.toConnectResult().getModemRef();
         }
     }
@@ -123,10 +120,10 @@ public class ShellActor implements Actor, LoggingSupport {
     private void processAtCommand(final Buffer cmd) {
 
         // TODO: fix because we haven't pushed through the ModemConnect result back to the caller.
-        if (modem.isEmpty()) {
-            final var path = modemManager.path().createChild("ttyusb2");
-            modem = ctx().lookup(path);
-        }
+        // if (modem.isEmpty()) {
+            // final var path = modemManager.path().createChild("ttyusb2");
+            // modem = ctx().lookup(path);
+        // }
 
         modem.ifPresent(ref -> {
             ref.tell(AtCommand.of(cmd), self());

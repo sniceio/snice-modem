@@ -1,7 +1,7 @@
 package io.snice.modem.actors;
 
 import io.hektor.actors.Alert;
-import io.snice.modem.actors.events.ModemEvent;
+import io.snice.modem.actors.messages.modem.ModemMessage;
 
 public enum ModemAlertCode implements Alert {
 
@@ -20,7 +20,7 @@ public enum ModemAlertCode implements Alert {
     UNHANDLED_FSM_EVENT(3000, "{} Unhandled event of type {}. Formatted output {}"),
 
     /**
-     * External components will send us various {@link ModemEvent}s and at some point later
+     * External components will send us various {@link ModemMessage}s and at some point later
      * we should generate a response and send it back to the caller. However, if we do
      * generate a response but we cannot find the oustanding transaction, then we failed to
      * inform the caller and we now have a dropped event.

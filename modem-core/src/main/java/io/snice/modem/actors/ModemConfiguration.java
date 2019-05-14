@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertArgument;
@@ -264,11 +265,16 @@ public class ModemConfiguration {
         @JsonProperty("resetCommands")
         public Builder withResetCommands(final List<AtCommand> resetCommands) {
             assertNotNull(resetCommands, "The list success reset commands cannot be null");
+            assertArgument(resetCommands.stream().filter(Objects::isNull).count() == 0L,
+                    "One or more of the reset commands were null");
             this.resetCommands = resetCommands;
             return this;
         }
 
         public Builder withResetCommands(final AtCommand... resetCommands) {
+            if (resetCommands == null) {
+                return this;
+            }
             return withResetCommands(Arrays.asList(resetCommands));
         }
 

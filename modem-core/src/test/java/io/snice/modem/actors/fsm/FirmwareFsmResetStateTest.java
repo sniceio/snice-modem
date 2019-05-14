@@ -1,9 +1,14 @@
 package io.snice.modem.actors.fsm;
 
 import io.hektor.actors.io.StreamToken;
+import io.snice.modem.actors.ModemConfiguration;
 import io.snice.modem.actors.events.AtCommand;
-import io.snice.modem.actors.events.ModemReset;
+import io.snice.modem.actors.messages.modem.ModemResetRequest;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -20,18 +25,18 @@ public class FirmwareFsmResetStateTest extends FirmwareFsmTestBase {
      * @throws Exception
      */
     @Test
-    public void testResetLoop() throws Exception {
+    public void testResetLoop() {
 
         // Configure the firmware to have a few reset commands.
         init(AtCommand.of("ATZ"), AtCommand.of("ATV1"), AtCommand.of("ATI"));
 
         // Trigger the reset loop by sending a reset command.
-        fsm.onEvent(ModemReset.of());
+        final var req = ModemResetRequest.of();
+        fsm.onEvent(req);
 
         // We should now try and write the first reset command to the
         // modem...
         ensureCommandProcessing("ATZ", 1000);
-        // verify(ctx).writeToModem(AtCommand.of("ATZ"));
 
         // Then pretend that we got back some stuff from the modem
         // as part success an external read loop.
@@ -68,6 +73,25 @@ public class FirmwareFsmResetStateTest extends FirmwareFsmTestBase {
         // and because there are no more RESET commands we should be back to the READY
         // state...
         assertThat(fsm.getState(), is(FirmwareState.READY));
+
+        final var resp = req.createSuccessResponse();
+        verify(ctx).dispatchResponse(resp);
+    }
+
+    /**
+     * If we don't configure any reset commands then we should transition back to READY
+     * right away and we should be given a
+     */
+    @Test
+    public void testEmptyResetLoop() {
+        init(List.of());
+
+        // Trigger the reset loop by sending a reset command.
+        var req = ModemResetRequest.of();
+        fsm.onEvent(req);
+
+        // we should be getting an empty success reset response back.
+        verify(ctx).dispatchResponse(req.createSuccessResponse());
     }
 
 }

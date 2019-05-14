@@ -5,8 +5,8 @@ import io.hektor.core.ActorRef;
 import io.hektor.fsm.Context;
 import io.hektor.fsm.Scheduler;
 import io.snice.modem.actors.ModemConfiguration;
-import io.snice.modem.actors.events.ModemEvent;
-import io.snice.modem.actors.events.ModemReset;
+import io.snice.modem.actors.messages.modem.ModemMessage;
+import io.snice.modem.actors.messages.modem.ModemResetRequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +27,7 @@ public class ModemContext implements Context {
 
     private final SerialPort port;
 
-    private final List<ModemEvent> outstandingModemEvents;
+    private final List<ModemMessage> outstandingModemEvents;
 
     public ModemContext(final ActorRef self, final SerialPort serialPort, final Scheduler scheduler, final ExecutorService threadPool, final ModemConfiguration config) {
         this.self = self;
@@ -60,15 +60,15 @@ public class ModemContext implements Context {
 
     /**
      * Pass on an event to the actual modem. Typically, this will be AT commands but also
-     * other types success commands such as the {@link ModemReset} command.
+     * other types success commands such as the {@link ModemResetRequest} command.
      *
      * @param event
      */
-    public void sendEvent(final ModemEvent event) {
+    public void sendEvent(final ModemMessage event) {
         outstandingModemEvents.add(event);
     }
 
-    public Optional<ModemEvent> getNextModemEvent() {
+    public Optional<ModemMessage> getNextModemEvent() {
         if (outstandingModemEvents.isEmpty()) {
             return Optional.empty();
         }

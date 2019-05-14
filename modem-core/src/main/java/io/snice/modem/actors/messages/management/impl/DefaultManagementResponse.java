@@ -1,6 +1,6 @@
-package io.snice.modem.actors.messages.impl;
+package io.snice.modem.actors.messages.management.impl;
 
-import io.snice.modem.actors.messages.ManagementResponse;
+import io.snice.modem.actors.messages.management.ManagementResponse;
 
 import java.util.UUID;
 

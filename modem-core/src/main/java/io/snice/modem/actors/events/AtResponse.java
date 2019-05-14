@@ -1,6 +1,10 @@
 package io.snice.modem.actors.events;
 
 import io.snice.buffer.Buffer;
+import io.snice.modem.actors.messages.modem.ModemMessage;
+import io.snice.modem.actors.messages.management.impl.TransactionMessageImpl;
+import io.snice.modem.actors.messages.modem.ModemResetResponse;
+import io.snice.modem.actors.messages.modem.ModemResponse;
 
 import java.util.Objects;
 
@@ -13,7 +17,7 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
  * has been stripped.
  *
  */
-public class AtResponse extends ModemEvent {
+public class AtResponse extends TransactionMessageImpl implements ModemResponse {
 
     public static AtResponse success(final AtCommand cmd, final Buffer response) {
         return create(true, cmd, response);
@@ -44,6 +48,13 @@ public class AtResponse extends ModemEvent {
         this.cmd = cmd;
         this.response = response;
 
+    }
+
+    /**
+     * Retrieve the {@link AtCommand} to which this response was, well, responding :-)
+     */
+    public AtCommand getCommand() {
+        return cmd;
     }
 
     @Override

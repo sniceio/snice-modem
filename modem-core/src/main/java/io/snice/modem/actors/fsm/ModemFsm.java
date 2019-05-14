@@ -8,8 +8,9 @@ import io.hektor.fsm.builder.StateBuilder;
 import io.snice.modem.actors.ModemConfiguration;
 import io.snice.modem.actors.events.ModemConnectFailure;
 import io.snice.modem.actors.events.ModemConnectSuccess;
-import io.snice.modem.actors.events.ModemEvent;
-import io.snice.modem.actors.events.ModemReset;
+import io.snice.modem.actors.messages.modem.ModemMessage;
+import io.snice.modem.actors.messages.modem.ModemResetRequest;
+import io.snice.modem.actors.messages.modem.ModemResetResponse;
 
 import java.time.Duration;
 
@@ -42,17 +43,17 @@ public class ModemFsm {
         connecting.withEnterAction(ModemFsm::onConnectingEnterAction);
 
         connecting.transitionTo(ModemState.RESET)
-                .onEvent(ModemEvent.class)
-                .withGuard(ModemEvent::isConnectSuccessEvent);
+                .onEvent(ModemMessage.class)
+                .withGuard(ModemMessage::isConnectSuccessEvent);
 
         // eventually we'll retry different baud rates and what not but for now, we'll just
         // give up right away because we have no patience...
-        connecting.transitionTo(ModemState.DISCONNECTING).onEvent(ModemEvent.class).withGuard(ModemEvent::isConnectFailureEvent);
+        connecting.transitionTo(ModemState.DISCONNECTING).onEvent(ModemMessage.class).withGuard(ModemMessage::isConnectFailureEvent);
     }
 
     private static void stateDefinitionsReset(final StateBuilder<ModemState, ModemContext, ModemData> resetting) {
-        resetting.withEnterAction((ctx, data) -> ctx.sendEvent(ModemReset.of()));
-        resetting.transitionTo(ModemState.CONNECTED).onEvent(String.class);
+        resetting.withEnterAction((ctx, data) -> ctx.sendEvent(ModemResetRequest.of()));
+        resetting.transitionTo(ModemState.CONNECTED).onEvent(ModemResetResponse.class);
     }
 
     /**
