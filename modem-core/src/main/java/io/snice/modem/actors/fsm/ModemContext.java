@@ -58,6 +58,7 @@ public class ModemContext implements Context {
         return config;
     }
 
+
     /**
      * Pass on an event to the actual modem. Typically, this will be AT commands but also
      * other types success commands such as the {@link ModemResetRequest} command.

@@ -8,6 +8,7 @@ import io.hektor.fsm.builder.StateBuilder;
 import io.snice.modem.actors.ModemConfiguration;
 import io.snice.modem.actors.events.ModemConnectFailure;
 import io.snice.modem.actors.events.ModemConnectSuccess;
+import io.snice.modem.actors.messages.management.impl.SuccessConnectResponse;
 import io.snice.modem.actors.messages.modem.ModemMessage;
 import io.snice.modem.actors.messages.modem.ModemResetRequest;
 import io.snice.modem.actors.messages.modem.ModemResetResponse;
@@ -23,8 +24,12 @@ public class ModemFsm {
                 FSM.of(ModemState.class).ofContextType(ModemContext.class).withDataType(ModemData.class);
 
         stateDefinitionsConnecting(builder.withInitialState(ModemState.CONNECTING));
-        stateDefinitionsReset(builder.withState(ModemState.RESET));
+
+        stateDefinitionsFirmware(builder.withState(ModemState.FIRMWARE));
+
         stateDefinitionsConnected(builder.withState(ModemState.CONNECTED));
+
+        stateDefinitionsReset(builder.withState(ModemState.RESET));
 
         stateDefinitionsReady(builder.withState(ModemState.READY));
 
@@ -42,6 +47,11 @@ public class ModemFsm {
     private static void stateDefinitionsConnecting(final StateBuilder<ModemState, ModemContext, ModemData> connecting) {
         connecting.withEnterAction(ModemFsm::onConnectingEnterAction);
 
+        connecting.transitionTo(ModemState.CONNECTED)
+                .onEvent(ModemMessage.class)
+                .withGuard(ModemMessage::isConnectSuccessEvent)
+                .withAction((evt, ctx, data) -> ctx.sendEvent(null));
+
         connecting.transitionTo(ModemState.RESET)
                 .onEvent(ModemMessage.class)
                 .withGuard(ModemMessage::isConnectSuccessEvent);
@@ -49,6 +59,14 @@ public class ModemFsm {
         // eventually we'll retry different baud rates and what not but for now, we'll just
         // give up right away because we have no patience...
         connecting.transitionTo(ModemState.DISCONNECTING).onEvent(ModemMessage.class).withGuard(ModemMessage::isConnectFailureEvent);
+    }
+
+    /**
+     * The {@link ModemState#FIRMWARE} is for setting up the necessary
+     * @param connecting
+     */
+    private static void stateDefinitionsFirmware(final StateBuilder<ModemState, ModemContext, ModemData> connecting) {
+
     }
 
     private static void stateDefinitionsReset(final StateBuilder<ModemState, ModemContext, ModemData> resetting) {
