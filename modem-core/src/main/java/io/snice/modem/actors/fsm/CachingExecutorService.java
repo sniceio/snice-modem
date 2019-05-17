@@ -18,7 +18,6 @@ import java.util.concurrent.TimeoutException;
  */
 public class CachingExecutorService implements ExecutorService {
 
-    private List<RunnableHolder> runnables;
     private List<CallableHolder> callables;
 
     @Override
@@ -65,14 +64,6 @@ public class CachingExecutorService implements ExecutorService {
         }
 
         callables.add(callable);
-    }
-
-    private void addRunnable(final RunnableHolder<?> runnable) {
-        if (runnables == null) {
-            runnables = new ArrayList<>(2);
-        }
-
-        runnables.add(runnable);
     }
 
     @Override

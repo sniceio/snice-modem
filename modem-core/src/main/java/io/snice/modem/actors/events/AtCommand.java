@@ -5,10 +5,11 @@ import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
 import io.snice.modem.actors.messages.modem.ModemMessage;
 import io.snice.modem.actors.messages.management.impl.TransactionMessageImpl;
+import io.snice.modem.actors.messages.modem.ModemRequest;
 
 import java.util.Objects;
 
-public class AtCommand extends TransactionMessageImpl implements ModemMessage {
+public class AtCommand extends TransactionMessageImpl implements ModemRequest {
 
     private final Buffer command;
 
@@ -19,11 +20,6 @@ public class AtCommand extends TransactionMessageImpl implements ModemMessage {
 
     public static AtCommand of(final Buffer cmd) {
         return new AtCommand(cmd);
-    }
-
-    @Override
-    public boolean isAtCommand() {
-        return true;
     }
 
     private AtCommand(final Buffer command) {
@@ -37,6 +33,15 @@ public class AtCommand extends TransactionMessageImpl implements ModemMessage {
         final AtCommand atCommand = (AtCommand) o;
         return Objects.equals(command, atCommand.command);
     }
+
+    public AtResponse successResponse(final Buffer content) {
+        return AtResponse.success(this, content);
+    }
+
+    public AtResponse successResponse(final String content) {
+        return AtResponse.success(this, Buffers.wrap(content));
+    }
+
 
     @Override
     public int hashCode() {

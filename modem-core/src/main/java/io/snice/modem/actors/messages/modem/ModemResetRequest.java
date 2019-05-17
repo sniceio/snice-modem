@@ -6,7 +6,7 @@ import io.snice.modem.actors.messages.modem.impl.DefaultModemResetRequest;
 
 import java.util.List;
 
-public interface ModemResetRequest extends ModemMessage {
+public interface ModemResetRequest extends ModemRequest {
 
     static ModemResetRequest of() {
         return new DefaultModemResetRequest();

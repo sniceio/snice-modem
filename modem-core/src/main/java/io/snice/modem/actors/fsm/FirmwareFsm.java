@@ -222,7 +222,7 @@ public class FirmwareFsm {
                 data.stashBuffer(trimmed);
 
                 // TODO: we also need to mark if the response is a success or not...
-                final AtResponse response = AtResponse.success(cmd, data.consumeAllData());
+                final AtResponse response = cmd.successResponse(data.consumeAllData());
                 data.saveResponse(response);
             } else {
                 data.stashBuffer(buffer);

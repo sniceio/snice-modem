@@ -1,90 +1,31 @@
 package io.snice.modem.actors.fsm;
 
 import com.fazecast.jSerialComm.SerialPort;
-import io.hektor.core.ActorRef;
 import io.hektor.fsm.Context;
-import io.hektor.fsm.Scheduler;
 import io.snice.modem.actors.ModemConfiguration;
-import io.snice.modem.actors.messages.modem.ModemMessage;
+import io.snice.modem.actors.messages.modem.ModemRequest;
 import io.snice.modem.actors.messages.modem.ModemResetRequest;
+import io.snice.modem.actors.messages.modem.ModemResponse;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
 
-public class ModemContext implements Context {
+public interface ModemContext extends Context {
 
-    private final Scheduler scheduler;
-    private final ModemConfiguration config;
-    private final ActorRef self;
+    void createFirmware(final ModemData.FirmwareType type);
 
-    /**
-     * The thread pool where we'll schedule various jobs, typically blocking IO-related ones...
-     */
-    private final ExecutorService threadPool;
+    ModemConfiguration getConfig();
 
-    private final SerialPort port;
-
-    private final List<ModemMessage> outstandingModemEvents;
-
-    public ModemContext(final ActorRef self, final SerialPort serialPort, final Scheduler scheduler, final ExecutorService threadPool, final ModemConfiguration config) {
-        this.self = self;
-        this.port = serialPort;
-        this.scheduler = scheduler;
-        this.config = config;
-        this.threadPool  = threadPool;
-        this.outstandingModemEvents = new ArrayList<>();
-    }
-
-    public ActorRef getSelf() {
-        return self;
-    }
-
-    /**
-     * Connect to the modem.
-     */
-    public void connect() {
-
-    }
-
-    @Override
-    public Scheduler getScheduler() {
-        return scheduler;
-    }
-
-    public ModemConfiguration getConfig() {
-        return config;
-    }
-
+    void onResponse(ModemResponse response);
 
     /**
      * Pass on an event to the actual modem. Typically, this will be AT commands but also
      * other types success commands such as the {@link ModemResetRequest} command.
      *
-     * @param event
+     * @param request
      */
-    public void sendEvent(final ModemMessage event) {
-        outstandingModemEvents.add(event);
-    }
+    void send(final ModemRequest request);
 
-    public Optional<ModemMessage> getNextModemEvent() {
-        if (outstandingModemEvents.isEmpty()) {
-            return Optional.empty();
-        }
+    SerialPort getPort();
 
-        return Optional.of(outstandingModemEvents.remove(0));
-    }
-
-    public SerialPort getPort() {
-        return port;
-    }
-
-    public void runJob(final Callable<Object> job) {
-        threadPool.submit(() -> {
-            final Object result = job.call();
-            return result;
-        });
-    }
+    void runJob(final Callable<Object> job);
 }
