@@ -121,7 +121,16 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
             processChildDeath((Terminated) msg);
         } else {
             fsm.onEvent(msg);
+            processScheduledTasks(cachingFsmScheduler);
         }
+    }
+
+    private void processScheduledTasks(final CachingFsmScheduler scheduler) {
+        scheduler.drainAllScheduledTasks().forEach(t -> {
+            var event = t.getProducer().get();
+            ctx().scheduler().schedule(event, self, self, t.getDelay());
+        });
+
     }
 
     private void processChildDeath(final Terminated terminated) {
@@ -139,7 +148,7 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
     }
 
     public void unhandledEvent(final FirmwareState state, final Object o) {
-        logWarn(FirmwareAlertCode.UNHANDLED_FSM_EVENT, state, o.getClass().getName(), format(0));
+        logWarn(FirmwareAlertCode.UNHANDLED_FSM_EVENT, state, o.getClass().getName(), String.format("\"%s\"",format(o)));
     }
 
     public void onTransition(final FirmwareState currentState, final FirmwareState toState, final Object event) {

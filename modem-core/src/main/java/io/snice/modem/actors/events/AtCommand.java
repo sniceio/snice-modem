@@ -26,6 +26,12 @@ public class AtCommand extends TransactionMessageImpl implements ModemRequest {
         this.command = command;
     }
 
+    public boolean isAtRequest() { return true; }
+
+    public AtCommand toAtRequest() {
+        return this;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;

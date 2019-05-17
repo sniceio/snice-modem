@@ -8,6 +8,7 @@ import io.snice.buffer.Buffer;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
 import io.snice.modem.actors.events.ModemDisconnect;
+import io.snice.modem.actors.events.TransactionTimeout;
 import io.snice.modem.actors.messages.modem.ModemResetRequest;
 
 import java.util.Optional;
@@ -128,8 +129,9 @@ public class FirmwareFsm {
     }
 
     private static void writeToModem(final AtCommand cmd, final FirmwareContext ctx, final FirmwareData data) {
-        final var timeout = ctx.getConfiguration().getCommandConfiguration().getTimeout(cmd);
-        ctx.getScheduler().schedule(() -> "timeout for " + cmd.getTransactionId(), timeout);
+        final var delay = ctx.getConfiguration().getCommandConfiguration().getTimeout(cmd);
+        final var timeout = TransactionTimeout.of(cmd);
+        ctx.getScheduler().schedule(() -> timeout, delay);
 
         data.setCurrentCommand(cmd);
         ctx.writeToModem(cmd);
