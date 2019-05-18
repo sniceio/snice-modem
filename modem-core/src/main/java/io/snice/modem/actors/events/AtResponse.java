@@ -64,7 +64,7 @@ public class AtResponse extends TransactionMessageImpl implements ModemResponse 
     public String toString() {
         var cmdBuffer = getCommand().getCommand();
         var status = isSuccess ? "OK" : "ERROR";
-        return String.format("AtResponse<%s, %s>", status, cmdBuffer);
+        return String.format("AtResponse<%s, %s, %s>", status, cmdBuffer, getTransactionId());
     }
 
     @Override

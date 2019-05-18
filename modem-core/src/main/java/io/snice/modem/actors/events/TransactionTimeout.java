@@ -1,10 +1,14 @@
 package io.snice.modem.actors.events;
 
+import io.snice.modem.actors.messages.TransactionMessage;
 import io.snice.modem.actors.messages.modem.ModemRequest;
+import io.snice.modem.actors.messages.modem.ModemResponse;
+
+import java.util.UUID;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public class TransactionTimeout {
+public class TransactionTimeout implements ModemResponse {
 
     private final ModemRequest request;
 
@@ -13,13 +17,17 @@ public class TransactionTimeout {
         return new TransactionTimeout(request);
     }
 
+    public boolean matchTransaction(final TransactionMessage transaction) {
+        return transaction != null && request.getTransactionId().equals(transaction.getTransactionId());
+    }
+
     private TransactionTimeout(final ModemRequest request) {
         this.request = request;
     }
 
     @Override
     public String toString() {
-        return String.format("TransactionTimeout<%s, %s, %s>", request.getTransactionId(), request.getClass().getSimpleName(), format(request));
+        return String.format("TransactionTimeout<%s>", request);
     }
 
     private static String format(final ModemRequest request) {
@@ -28,5 +36,10 @@ public class TransactionTimeout {
         }
 
         return request.toString();
+    }
+
+    @Override
+    public UUID getTransactionId() {
+        return request.getTransactionId();
     }
 }

@@ -13,6 +13,7 @@ public class CachingFsmScheduler implements Scheduler {
 
     private List<CancellableTask> tasks;
 
+
     @Override
     public <T> Cancellable schedule(final Supplier<T> producer, final Duration delay) {
         final CancellableTask<T> task = new CancellableTask<T>(producer, delay);

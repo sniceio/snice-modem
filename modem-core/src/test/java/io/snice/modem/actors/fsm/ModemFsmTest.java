@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -29,12 +30,12 @@ public class ModemFsmTest extends FsmTestBase<ModemState, ModemContext, ModemDat
     @Override
     @Before
     public void setup() throws Exception {
-        this.cachingFsmScheduler = new CachingFsmScheduler();
         init();
     }
 
     private void init() {
         config = ModemConfiguration.of().build();
+        cachingFsmScheduler = mock(CachingFsmScheduler.class);
         ctx = mockModemContext(cachingFsmScheduler, config);
         init(ctx);
     }

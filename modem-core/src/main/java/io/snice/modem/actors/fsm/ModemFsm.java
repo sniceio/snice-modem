@@ -83,9 +83,7 @@ public class ModemFsm {
      * @param connected
      */
     private static void stateDefinitionsConnected(final StateBuilder<ModemState, ModemContext, ModemData> connected) {
-        connected.withEnterAction(ModemFsm::onConnectedEnterAction);
         connected.transitionTo(ModemState.READY).onEvent(String.class).withGuard("TIMEOUT_CONNECTED"::equals);
-
         connected.transitionTo(ModemState.RESET).asDefaultTransition();
     }
 
@@ -118,8 +116,6 @@ public class ModemFsm {
      * @param ready
      */
     private static void stateDefinitionsReady(final StateBuilder<ModemState, ModemContext, ModemData> ready) {
-        ready.withEnterAction(ModemFsm::onReadyEnterAction);
-
         ready.transitionTo(ModemState.CMD).onEvent(ModemRequest.class).withAction(ModemFsm::processRequest);
 
         ready.transitionTo(ModemState.DISCONNECTING).onEvent(String.class).withGuard("TIMEOUT_READY"::equals);
@@ -167,7 +163,6 @@ public class ModemFsm {
      * @param disconnecting
      */
     private static void stateDefinitionsDisconnecting(final StateBuilder<ModemState, ModemContext, ModemData> disconnecting) {
-        disconnecting.withEnterAction(ModemFsm::onDisconnectingEnterAction);
         disconnecting.transitionTo(ModemState.TERMINATED).onEvent(String.class).withGuard("TIMEOUT"::equals);
     }
 
@@ -202,33 +197,6 @@ public class ModemFsm {
 
             return ModemConnectSuccess.of();
         });
-    }
-
-    /**
-     *
-     * @param ctx
-     * @param data
-     */
-    private static void onReadyEnterAction(final ModemContext ctx, final ModemData data) {
-        ctx.getScheduler().schedule(() -> "READY_CONNECTED", Duration.ofMillis(100));
-    }
-
-    /**
-     *
-     * @param ctx
-     * @param data
-     */
-    private static void onConnectedEnterAction(final ModemContext ctx, final ModemData data) {
-        ctx.getScheduler().schedule(() -> "TIMEOUT_CONNECTED", Duration.ofMillis(100));
-    }
-
-    /**
-     *
-     * @param ctx
-     * @param data
-     */
-    private static void onDisconnectingEnterAction(final ModemContext ctx, final ModemData data) {
-        ctx.getScheduler().schedule(() -> "TIMEOUT", Duration.ofMillis(250));
     }
 
 }

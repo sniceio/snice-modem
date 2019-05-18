@@ -1,11 +1,13 @@
 package io.snice.modem.actors.fsm;
 
 import io.hektor.actors.io.StreamToken;
+import io.hektor.fsm.Cancellable;
 import io.hektor.fsm.Data;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
+import io.snice.modem.actors.events.TransactionTimeout;
 import io.snice.modem.actors.messages.modem.ModemResetRequest;
 import io.snice.modem.actors.messages.modem.ModemResetResponse;
 
@@ -54,10 +56,34 @@ public class FirmwareData implements Data {
      */
     private AtResponse response;
 
+    private Cancellable currentTransactionTimer;
+
     public AtResponse consumeResponse() {
         final AtResponse result = response;
         response = null;
         return result;
+    }
+
+    /**
+     * Every {@link AtCommand} has a timeout associated with it and if we do not receive a complete
+     * answer from the underlying modem within this time, this timer will fire in order to clean-up.
+     *
+     * @param timer
+     */
+    public void setTransactionTimer(final Cancellable timer) {
+        assertNull(currentTransactionTimer, "You cannot save another transaction timer when you have one outstanding");
+        currentTransactionTimer = timer;
+    }
+
+    public void cancelTransactionTimer() {
+        if (currentTransactionTimer != null) {
+            currentTransactionTimer.cancel();
+            currentTransactionTimer = null;
+        }
+    }
+
+    public boolean isCurrentTransactionTimer(final TransactionTimeout timeout) {
+        return timeout != null && timeout.matchTransaction(currentCommand);
     }
 
     public boolean hasFinalResponse() {
@@ -86,7 +112,7 @@ public class FirmwareData implements Data {
         return maybe;
     }
 
-    public List<AtResponse> consumeResetResponse() {
+    public List<AtResponse> consumeResetResponses() {
         final var copy = List.copyOf(savedResetResponses);
         savedResetResponses = null;
 

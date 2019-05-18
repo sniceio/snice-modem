@@ -3,7 +3,6 @@ package io.snice.modem.actors.events;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
-import io.snice.modem.actors.messages.modem.ModemMessage;
 import io.snice.modem.actors.messages.management.impl.TransactionMessageImpl;
 import io.snice.modem.actors.messages.modem.ModemRequest;
 
@@ -26,8 +25,10 @@ public class AtCommand extends TransactionMessageImpl implements ModemRequest {
         this.command = command;
     }
 
+    @Override
     public boolean isAtRequest() { return true; }
 
+    @Override
     public AtCommand toAtRequest() {
         return this;
     }
@@ -61,6 +62,6 @@ public class AtCommand extends TransactionMessageImpl implements ModemRequest {
 
     @Override
     public String toString() {
-        return command.toString();
+        return String.format("%s<%s, %s>", AtCommand.class.getSimpleName(), command.toString(), getTransactionId());
     }
 }

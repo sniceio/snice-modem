@@ -11,6 +11,7 @@ import io.snice.modem.actors.events.FirmwareCreatedEvent;
 import io.snice.modem.actors.fsm.CachingExecutorService;
 import io.snice.modem.actors.fsm.CachingExecutorService.CallableHolder;
 import io.snice.modem.actors.fsm.CachingFsmScheduler;
+import io.snice.modem.actors.fsm.CachingFsmScheduler2;
 import io.snice.modem.actors.fsm.ModemContext;
 import io.snice.modem.actors.fsm.ModemData;
 import io.snice.modem.actors.fsm.ModemFsm;
@@ -42,7 +43,7 @@ public class ModemActor implements Actor, LoggingSupport {
     private FSM<ModemState, ModemContext, ModemData> fsm;
 
     private final CachingExecutorService cachingThreadPool;
-    private final CachingFsmScheduler cachingScheduler;
+    private CachingFsmScheduler2 cachingScheduler;
 
     private final ExecutorService blockingIoPool;
 
@@ -58,7 +59,6 @@ public class ModemActor implements Actor, LoggingSupport {
 
     private ModemActor(final ExecutorService blockingIoPool, final SerialPort port) {
         cachingThreadPool = new CachingExecutorService();
-        cachingScheduler = new CachingFsmScheduler();
 
         this.blockingIoPool = blockingIoPool;
 
@@ -71,6 +71,7 @@ public class ModemActor implements Actor, LoggingSupport {
     @Override
     public void start() {
         logInfo("Starting");
+        cachingScheduler = new CachingFsmScheduler2(ctx().scheduler(), self());
         fsm = ModemFsm.definition.newInstance(getUUID(), modemCtx, data, this::unhandledEvent, this::onTransition);
         fsm.start();
         postInvocation();
@@ -88,7 +89,7 @@ public class ModemActor implements Actor, LoggingSupport {
 
 
     public void unhandledEvent(final ModemState modemState, final Object o) {
-        logWarn(ModemAlertCode.UNHANDLED_FSM_EVENT, modemState, o.getClass().getName(), format(0));
+        logWarn(ModemAlertCode.UNHANDLED_FSM_EVENT, modemState, o.getClass().getName(), format(o));
     }
 
     public void onTransition(final ModemState currentState, final ModemState toState, final Object event) {
@@ -110,14 +111,8 @@ public class ModemActor implements Actor, LoggingSupport {
      * any runnables or timers the FSM may have scheduled.
      */
     private void postInvocation() {
-        processScheduledTasks();
+        // processScheduledTasks();
         processCallables();
-    }
-
-    private void processScheduledTasks() {
-        for (final CachingFsmScheduler.CancellableTask task : cachingScheduler.drainAllScheduledTasks()) {
-            logDebug("Processing scheduled task {}", task);
-        }
     }
 
     private void processCallables() {
@@ -193,7 +188,11 @@ public class ModemActor implements Actor, LoggingSupport {
 
         @Override
         public void onResponse(final ModemResponse response) {
-            System.err.println(response.toAtResponse().getResponse());
+            if (response.isAtResponse()) {
+                System.err.println(response.toAtResponse().getResponse());
+            } else {
+                System.err.println(response);
+            }
         }
 
         @Override
