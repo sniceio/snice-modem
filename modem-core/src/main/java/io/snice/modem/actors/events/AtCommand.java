@@ -3,12 +3,12 @@ package io.snice.modem.actors.events;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
-import io.snice.modem.actors.messages.modem.ModemMessage;
 import io.snice.modem.actors.messages.management.impl.TransactionMessageImpl;
+import io.snice.modem.actors.messages.modem.ModemRequest;
 
 import java.util.Objects;
 
-public class AtCommand extends TransactionMessageImpl implements ModemMessage {
+public class AtCommand extends TransactionMessageImpl implements ModemRequest {
 
     private final Buffer command;
 
@@ -21,13 +21,16 @@ public class AtCommand extends TransactionMessageImpl implements ModemMessage {
         return new AtCommand(cmd);
     }
 
-    @Override
-    public boolean isAtCommand() {
-        return true;
-    }
-
     private AtCommand(final Buffer command) {
         this.command = command;
+    }
+
+    @Override
+    public boolean isAtRequest() { return true; }
+
+    @Override
+    public AtCommand toAtRequest() {
+        return this;
     }
 
     @Override
@@ -37,6 +40,15 @@ public class AtCommand extends TransactionMessageImpl implements ModemMessage {
         final AtCommand atCommand = (AtCommand) o;
         return Objects.equals(command, atCommand.command);
     }
+
+    public AtResponse successResponse(final Buffer content) {
+        return AtResponse.success(this, content);
+    }
+
+    public AtResponse successResponse(final String content) {
+        return AtResponse.success(this, Buffers.wrap(content));
+    }
+
 
     @Override
     public int hashCode() {
@@ -50,6 +62,6 @@ public class AtCommand extends TransactionMessageImpl implements ModemMessage {
 
     @Override
     public String toString() {
-        return command.toString();
+        return String.format("%s<%s, %s>", AtCommand.class.getSimpleName(), command.toString(), getTransactionId());
     }
 }

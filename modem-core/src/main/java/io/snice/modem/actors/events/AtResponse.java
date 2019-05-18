@@ -1,9 +1,7 @@
 package io.snice.modem.actors.events;
 
 import io.snice.buffer.Buffer;
-import io.snice.modem.actors.messages.modem.ModemMessage;
 import io.snice.modem.actors.messages.management.impl.TransactionMessageImpl;
-import io.snice.modem.actors.messages.modem.ModemResetResponse;
 import io.snice.modem.actors.messages.modem.ModemResponse;
 
 import java.util.Objects;
@@ -27,7 +25,7 @@ public class AtResponse extends TransactionMessageImpl implements ModemResponse 
         return create(false, cmd, response);
     }
 
-    private static AtResponse create(boolean isSuccess, AtCommand cmd, Buffer response) {
+    private static AtResponse create(final boolean isSuccess, final AtCommand cmd, final Buffer response) {
         assertNotNull(cmd, "The AT Command cannot be null");
         assertNotNull(response, "The response buffer cannot be null");
         return new AtResponse(isSuccess, cmd, response);
@@ -64,7 +62,9 @@ public class AtResponse extends TransactionMessageImpl implements ModemResponse 
 
     @Override
     public String toString() {
-        return response.toString();
+        var cmdBuffer = getCommand().getCommand();
+        var status = isSuccess ? "OK" : "ERROR";
+        return String.format("AtResponse<%s, %s, %s>", status, cmdBuffer, getTransactionId());
     }
 
     @Override
@@ -73,10 +73,10 @@ public class AtResponse extends TransactionMessageImpl implements ModemResponse 
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        AtResponse response1 = (AtResponse) o;
+        final AtResponse response1 = (AtResponse) o;
         return isSuccess == response1.isSuccess &&
                 Objects.equals(cmd, response1.cmd) &&
                 Objects.equals(response, response1.response);

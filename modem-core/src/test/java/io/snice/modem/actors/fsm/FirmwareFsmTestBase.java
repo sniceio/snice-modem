@@ -7,9 +7,7 @@ import io.snice.modem.actors.events.AtCommand;
 import org.junit.Before;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
-import java.util.function.BiConsumer;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -24,8 +22,6 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
     protected FirmwareData data;
     protected FirmwareContext ctx;
     protected ModemConfiguration config;
-
-    protected final BiConsumer<FirmwareState, Object> unhandledEventHandler = mock(BiConsumer.class);
 
     @Override
     @Before
@@ -48,7 +44,7 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
         init(config);
     }
 
-    protected void init(ModemConfiguration config) {
+    protected void init(final ModemConfiguration config) {
         scheduler = mock(Scheduler.class);
         ctx = mockFirmwareContext(scheduler, config);
         init(ctx);
@@ -73,10 +69,16 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
      * up in the WAIT state.
      * @param cmd
      */
-    protected void onAtCommand(final String cmd) {
-        fsm.onEvent(AtCommand.of(cmd));
-        verify(ctx).writeToModem(AtCommand.of(cmd));
-        assertThat(fsm.getState(), is(FirmwareState.WAIT));
+    protected AtCommand onAtCommand(final String cmd) {
+        final var at = AtCommand.of(cmd);
+        fsm.onEvent(at);
+        verify(ctx).writeToModem(at);
+        assertState(FirmwareState.WAIT);
+        return at;
+    }
+
+    protected void assertState(final FirmwareState expected) {
+        assertThat(fsm.getState(), is(expected));
     }
 
     /**
@@ -86,16 +88,16 @@ public class FirmwareFsmTestBase extends FsmTestBase<FirmwareState, FirmwareCont
      * @param cmd
      * @param timeout
      */
-    protected void ensureCommandProcessing(AtCommand cmd, Duration timeout) {
+    protected void ensureCommandProcessing(final AtCommand cmd, final Duration timeout) {
         verify(ctx).writeToModem(cmd);
 
     }
 
-    protected void ensureCommandProcessing(String cmd, Duration timeout) {
+    protected void ensureCommandProcessing(final String cmd, final Duration timeout) {
         ensureCommandProcessing(AtCommand.of(cmd), timeout);
     }
 
-    protected void ensureCommandProcessing(String cmd, int timeout) {
+    protected void ensureCommandProcessing(final String cmd, final int timeout) {
         ensureCommandProcessing(AtCommand.of(cmd), Duration.ofMillis(timeout));
     }
 

@@ -7,6 +7,7 @@ import io.snice.modem.actors.messages.modem.ModemResetResponse;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 public class DefaultModemResetRequest extends TransactionMessageImpl implements ModemResetRequest {
 
@@ -32,5 +33,12 @@ public class DefaultModemResetRequest extends TransactionMessageImpl implements 
         public List<AtResponse> getResetCommands() {
             return resetResponses;
         }
+
+        @Override
+        public String toString() {
+            final var reset = resetResponses.isEmpty() ? "none" : resetResponses.stream().map(r -> r.getCommand().getCommand().toString()).collect(Collectors.joining(","));
+            return String.format("%s<%s>", ModemResetResponse.class.getSimpleName(), reset);
+        }
+
     }
 }

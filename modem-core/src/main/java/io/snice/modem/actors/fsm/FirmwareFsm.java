@@ -8,6 +8,7 @@ import io.snice.buffer.Buffer;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
 import io.snice.modem.actors.events.ModemDisconnect;
+import io.snice.modem.actors.events.TransactionTimeout;
 import io.snice.modem.actors.messages.modem.ModemResetRequest;
 
 import java.util.Optional;
@@ -88,7 +89,7 @@ public class FirmwareFsm {
         final var resetReq = data.consumeResetRequest()
                 .orElseThrow(() -> new IllegalStateException("Expected a " + ModemResetRequest.class
                         + " to be present but seems there is a bug. Must have lost it."));
-        final var resetResp = resetReq.createSuccessResponse(data.consumeResetResponse());
+        final var resetResp = resetReq.createSuccessResponse(data.consumeResetResponses());
         ctx.dispatchResponse(resetResp);
     }
 
@@ -107,10 +108,6 @@ public class FirmwareFsm {
         } else if (!data.hasMoreResetCommands()) {
             data.isResetting(false);
         }
-
-        // TODD: we should stash this away and then perhaps return a RESET result
-        // back to the caller eventually. For now we'll just consume it...
-        // data.consumeResponse();
     }
 
     /**
@@ -128,8 +125,11 @@ public class FirmwareFsm {
     }
 
     private static void writeToModem(final AtCommand cmd, final FirmwareContext ctx, final FirmwareData data) {
-        final var timeout = ctx.getConfiguration().getCommandConfiguration().getTimeout(cmd);
-        ctx.getScheduler().schedule(() -> "timeout for " + cmd.getTransactionId(), timeout);
+        final var delay = ctx.getConfiguration().getCommandConfiguration().getTimeout(cmd);
+        final var timeout = TransactionTimeout.of(cmd);
+
+        final var timer = ctx.getScheduler().schedule(() -> timeout, delay);
+        data.setTransactionTimer(timer);
 
         data.setCurrentCommand(cmd);
         ctx.writeToModem(cmd);
@@ -143,16 +143,21 @@ public class FirmwareFsm {
      */
     private static void stateDefinitionWait(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> wait) {
 
-        // TODO: we need to setup timeouts for this state depending on the command.
-        // TODO: e.g. the AT+COPS=? will take some time but ATI will not.
-        // TODO: if there is a timeout then we should
-
-        // TODO: perhaps enchance Hektor so that the onEnterAction could also optionally
-        // TODO: get the event that took it to that state. That way we don't have to save it
-        // TODO: away like this...
         wait.transitionTo(FirmwareState.PROCESSING).onEvent(StreamToken.class).withAction((token, ctx, data) -> data.saveStreamToken(token));
         wait.transitionTo(FirmwareState.WAIT).onEvent(AtCommand.class).withAction((cmd, ctx, data) -> data.stashCommand(cmd));
+
+        wait.transitionTo(FirmwareState.READY)
+                .onEvent(TransactionTimeout.class)
+                .withGuard((timeout, ctx, data) -> data.isCurrentTransactionTimer(timeout))
+                .withAction(FirmwareFsm::processTransactionTimeout);
     }
+
+    private static void processTransactionTimeout(final TransactionTimeout timeout, final FirmwareContext ctx, final FirmwareData data) {
+        data.cancelTransactionTimer();
+        data.consumeCurrentCommand();
+        ctx.dispatchResponse(timeout);
+    }
+
 
     /**
      * While in the processing state we are just waiting for data from the modem and if that data now completes
@@ -171,7 +176,10 @@ public class FirmwareFsm {
         processing.transitionTo(FirmwareState.RESET)
                 .onEvent(StreamToken.class)
                 .withGuard((token, ctx, data) -> data.hasFinalResponse() && data.isResetting())
-                .withAction((token, ctx, data) -> data.saveResetResponse(data.consumeResponse()));
+                .withAction((token, ctx, data) -> {
+                    data.cancelTransactionTimer();
+                    data.saveResetResponse(data.consumeResponse());
+                });
 
         // if we have stashed commands we have to send those out
         // and once again end up in the WAIT <--> PROCESSING loop
@@ -189,7 +197,10 @@ public class FirmwareFsm {
         processing.transitionTo(FirmwareState.READY)
                 .onEvent(StreamToken.class)
                 .withGuard((token, ctx, data) -> data.hasFinalResponse())
-                .withAction((token, ctx, data) -> ctx.dispatchResponse(data.consumeResponse()));
+                .withAction((token, ctx, data) -> {
+                    data.cancelTransactionTimer();
+                    ctx.dispatchResponse(data.consumeResponse());
+                });
 
         processing.transitionTo(FirmwareState.WAIT).asDefaultTransition();
     }
@@ -222,7 +233,7 @@ public class FirmwareFsm {
                 data.stashBuffer(trimmed);
 
                 // TODO: we also need to mark if the response is a success or not...
-                final AtResponse response = AtResponse.success(cmd, data.consumeAllData());
+                final AtResponse response = cmd.successResponse(data.consumeAllData());
                 data.saveResponse(response);
             } else {
                 data.stashBuffer(buffer);
