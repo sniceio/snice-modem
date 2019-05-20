@@ -7,6 +7,7 @@ import io.snice.modem.actors.messages.modem.ModemRequest;
 import io.snice.modem.actors.messages.modem.ModemResetRequest;
 import io.snice.modem.actors.messages.modem.ModemResponse;
 
+import java.util.UUID;
 import java.util.concurrent.Callable;
 
 public interface ModemContext extends Context {
@@ -15,7 +16,7 @@ public interface ModemContext extends Context {
 
     ModemConfiguration getConfig();
 
-    void onResponse(ModemResponse response);
+    void onResponse(Transaction transaction, ModemResponse response);
 
     /**
      * Pass on an event to the actual modem. Typically, this will be AT commands but also
@@ -28,4 +29,20 @@ public interface ModemContext extends Context {
     SerialPort getPort();
 
     void runJob(final Callable<Object> job);
+
+    Transaction newTransaction(ModemRequest request);
+
+    /**
+     * For internal use only and for keeping track of the context
+     * around the handling of a request/response.
+     */
+    interface Transaction {
+
+        ModemRequest getRequest();
+
+        default UUID getTransactionId() {
+            return getRequest().getTransactionId();
+        }
+
+    }
 }

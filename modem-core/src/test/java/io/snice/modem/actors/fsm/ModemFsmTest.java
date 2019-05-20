@@ -12,7 +12,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -74,6 +73,11 @@ public class ModemFsmTest extends FsmTestBase<ModemState, ModemContext, ModemDat
         transitionToReady();
 
         final var cmd = AtCommand.of("ATI");
+        final var transaction = mock(ModemContext.Transaction.class);
+        when(transaction.getTransactionId()).thenReturn(cmd.getTransactionId());
+        when(transaction.getRequest()).thenReturn(cmd);
+        when(ctx.newTransaction(cmd)).thenReturn(transaction);
+
         fsm.onEvent(cmd);
         assertState(ModemState.CMD);
         verify(ctx).send(cmd);
@@ -81,7 +85,7 @@ public class ModemFsmTest extends FsmTestBase<ModemState, ModemContext, ModemDat
         // and we "receive" a response
         final var resp = cmd.successResponse("hello");
         fsm.onEvent(resp);
-        verify(ctx).onResponse(resp);
+        verify(ctx).onResponse(transaction, resp);
     }
 
     /**

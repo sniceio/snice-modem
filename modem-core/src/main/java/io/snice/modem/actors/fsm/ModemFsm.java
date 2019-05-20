@@ -15,8 +15,6 @@ import io.snice.modem.actors.messages.modem.ModemResetRequest;
 import io.snice.modem.actors.messages.modem.ModemResetResponse;
 import io.snice.modem.actors.messages.modem.ModemResponse;
 
-import java.time.Duration;
-
 public class ModemFsm {
 
     public static final Definition<ModemState, ModemContext, ModemData> definition;
@@ -38,7 +36,9 @@ public class ModemFsm {
         stateDefinitionsCmd(builder.withState(ModemState.CMD));
 
         stateDefinitionsDisconnecting(builder.withState(ModemState.DISCONNECTING));
-        stateDefinitionsTerminated(builder.withFinalState(ModemState.TERMINATED));
+
+        // nothing really to do in the final state so...
+        builder.withFinalState(ModemState.TERMINATED);
 
         definition = builder.build();
     }
@@ -127,7 +127,8 @@ public class ModemFsm {
      * so that we can later re-play the scenario if we want to.
      */
     private static void processRequest(final ModemRequest req, final ModemContext ctx, final ModemData data) {
-        data.saveTransaction(req);
+        var transaction = ctx.newTransaction(req);
+        data.saveTransaction(transaction);
         ctx.send(req);
     }
 
@@ -153,8 +154,8 @@ public class ModemFsm {
      * outstanding one (should be this one) and give it to the context.
      */
     private static void processTransaction(final ModemResponse resp, final ModemContext ctx, final ModemData data) {
-        data.consumeTransaction();
-        ctx.onResponse(resp);
+        final var transaction = data.consumeTransaction();
+        ctx.onResponse(transaction, resp);
     }
 
     /**
@@ -164,14 +165,6 @@ public class ModemFsm {
      */
     private static void stateDefinitionsDisconnecting(final StateBuilder<ModemState, ModemContext, ModemData> disconnecting) {
         disconnecting.transitionTo(ModemState.TERMINATED).onEvent(String.class).withGuard("TIMEOUT"::equals);
-    }
-
-    /**
-     * These are all the state transitions from the TERMINATED state.
-     *
-     * @param terminated
-     */
-    private static void stateDefinitionsTerminated(final StateBuilder<ModemState, ModemContext, ModemData> terminated) {
     }
 
     /**

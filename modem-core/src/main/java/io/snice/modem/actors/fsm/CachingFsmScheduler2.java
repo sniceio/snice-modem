@@ -21,7 +21,7 @@ public class CachingFsmScheduler2 implements Scheduler {
 
     @Override
     public <T> Cancellable schedule(final Supplier<T> producer, final Duration delay) {
-        final var event = producer.get(); // todo: this is wrong. Need to enhance hektor.io
+        final var event = producer.get();
         final var timeout = scheduler.schedule(event, self, self, delay);
         return new CancellableTask<T>(timeout);
     }

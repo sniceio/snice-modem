@@ -10,7 +10,6 @@ import io.hektor.fsm.Scheduler;
 import io.snice.modem.actors.events.FirmwareCreatedEvent;
 import io.snice.modem.actors.fsm.CachingExecutorService;
 import io.snice.modem.actors.fsm.CachingExecutorService.CallableHolder;
-import io.snice.modem.actors.fsm.CachingFsmScheduler;
 import io.snice.modem.actors.fsm.CachingFsmScheduler2;
 import io.snice.modem.actors.fsm.ModemContext;
 import io.snice.modem.actors.fsm.ModemData;
@@ -69,6 +68,16 @@ public class ModemActor implements Actor, LoggingSupport {
     }
 
     @Override
+    public void onReceive(final Object msg) {
+        fsm.onEvent(msg);
+        postInvocation();
+        if (fsm.isTerminated()) {
+            logInfo("looks like the FSM is dead so shutting down...");
+            ctx().stop();
+        }
+    }
+
+    @Override
     public void start() {
         logInfo("Starting");
         cachingScheduler = new CachingFsmScheduler2(ctx().scheduler(), self());
@@ -77,33 +86,12 @@ public class ModemActor implements Actor, LoggingSupport {
         postInvocation();
     }
 
-    @Override
-    public void stop() {
-
-    }
-
-    @Override
-    public void postStop() {
-
-    }
-
-
     public void unhandledEvent(final ModemState modemState, final Object o) {
         logWarn(ModemAlertCode.UNHANDLED_FSM_EVENT, modemState, o.getClass().getName(), format(o));
     }
 
     public void onTransition(final ModemState currentState, final ModemState toState, final Object event) {
         logInfo("{} -> {} Event: {}", currentState, toState, format(event));
-    }
-
-    @Override
-    public void onReceive(final Object msg) {
-        fsm.onEvent(msg);
-        postInvocation();
-        if (fsm.isTerminated()) {
-            logInfo("looks like the FSM is dead so shutting down...");
-            ctx().stop();
-        }
     }
 
     /**
@@ -187,12 +175,10 @@ public class ModemActor implements Actor, LoggingSupport {
         }
 
         @Override
-        public void onResponse(final ModemResponse response) {
-            if (response.isAtResponse()) {
-                System.err.println(response.toAtResponse().getResponse());
-            } else {
-                System.err.println(response);
-            }
+        public void onResponse(final Transaction transaction, final ModemResponse response) {
+            final var sender = ((DefaultTransaction)transaction).getSender();
+            System.err.println("Responding back to: " + sender);
+            sender.tell(response, self());
         }
 
         @Override
@@ -206,6 +192,33 @@ public class ModemActor implements Actor, LoggingSupport {
                 final Object result = job.call();
                 return result;
             });
+        }
+
+        @Override
+        public Transaction newTransaction(final ModemRequest request) {
+            assertNotNull(request, "The request cannot be null");
+            return new DefaultTransaction(request, sender());
+        }
+
+    }
+
+    private static class DefaultTransaction implements ModemContext.Transaction {
+
+        private final ModemRequest request;
+        private final ActorRef sender;
+
+        private DefaultTransaction(final ModemRequest request, final ActorRef sender) {
+            this.request = request;
+            this.sender = sender;
+        }
+
+        @Override
+        public ModemRequest getRequest() {
+            return request;
+        }
+
+        ActorRef getSender() {
+            return sender;
         }
     }
 }

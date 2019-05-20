@@ -3,6 +3,7 @@ package io.snice.modem.actors.messages.management;
 import com.fazecast.jSerialComm.SerialPort;
 import io.hektor.core.ActorRef;
 import io.snice.buffer.Buffer;
+import io.snice.buffer.Buffers;
 import io.snice.modem.actors.messages.management.ManagementResponse.ConnectResponse;
 import io.snice.modem.actors.messages.management.ManagementResponse.ScanResponse;
 import io.snice.modem.actors.messages.TransactionMessage;
@@ -39,6 +40,10 @@ public interface ManagementRequest extends TransactionMessage {
 
     static ConnectEvent connect(final Buffer port) throws IllegalArgumentException {
         return DefaultConnectRequest.of(port);
+    }
+
+    static ConnectEvent connect(final String port) throws IllegalArgumentException {
+        return DefaultConnectRequest.of(Buffers.wrap(port));
     }
 
     interface ConnectEvent extends ManagementRequest {

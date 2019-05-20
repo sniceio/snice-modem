@@ -6,6 +6,7 @@ import io.snice.modem.actors.messages.management.ManagementResponse.ScanResponse
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -26,5 +27,12 @@ public class DefaultScanResponse extends DefaultManagementResponse implements Sc
     @Override
     public List<SerialPort> getPorts() {
         return ports;
+    }
+
+    public String toString() {
+        if (ports.isEmpty()) {
+            return "No ports available";
+        }
+        return ports.stream().map(SerialPort::getSystemPortName).collect(Collectors.joining(", "));
     }
 }

@@ -83,7 +83,7 @@ public class ShellActor implements Actor, LoggingSupport {
         } else if (msg instanceof ManagementResponse) {
             processModemManagementResult((ManagementResponse)msg);
         } else if (msg instanceof AtResponse) {
-            System.err.println(((AtResponse) msg).toAtResponse().getResponse().toString());
+            System.err.println("yep: \n" + ((AtResponse) msg).toAtResponse().getResponse().toString());
         }
     }
 
@@ -118,13 +118,6 @@ public class ShellActor implements Actor, LoggingSupport {
     }
 
     private void processAtCommand(final Buffer cmd) {
-
-        // TODO: fix because we haven't pushed through the ModemConnect result back to the caller.
-        // if (modem.isEmpty()) {
-            // final var path = modemManager.path().createChild("ttyusb2");
-            // modem = ctx().lookup(path);
-        // }
-
         modem.ifPresent(ref -> {
             ref.tell(AtCommand.of(cmd), self());
         });

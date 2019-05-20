@@ -22,4 +22,8 @@ public class ErrorConnectResponse extends DefaultManagementResponse implements C
         return true;
     }
 
+    public String toString() {
+        return String.format("%s<%s>", ErrorConnectResponse.class.getSimpleName(), msg);
+    }
+
 }

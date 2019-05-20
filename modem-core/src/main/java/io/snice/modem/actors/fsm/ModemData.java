@@ -14,7 +14,7 @@ public class ModemData implements Data {
      * If we receive more requests while waiting for the completion
      * of an transaction we will just stash it.
      */
-    private ModemRequest outstandingTransaction;
+    private ModemContext.Transaction outstandingTransaction;
 
     private FirmwareType desiredFirmware = FirmwareType.GENERIC;
 
@@ -26,9 +26,9 @@ public class ModemData implements Data {
         return desiredFirmware;
     }
 
-    public void saveTransaction(final ModemRequest request) {
+    public void saveTransaction(final ModemContext.Transaction transaction) {
         assertNull(outstandingTransaction, "We already have an outstanding transaction");
-        outstandingTransaction = request;
+        outstandingTransaction = transaction;
     }
 
     public boolean hasOutstandingTransaction() {
@@ -50,8 +50,10 @@ public class ModemData implements Data {
     /**
      * Whenever the FSM has a matching transaction we'll consume it.
      */
-    public void consumeTransaction() {
+    public ModemContext.Transaction consumeTransaction() {
+        var t = outstandingTransaction;
         outstandingTransaction = null;
+        return t;
     }
 
 

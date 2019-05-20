@@ -21,4 +21,5 @@ public class DefaultScanRequest extends DefaultManagementRequest implements Scan
     public ScanResponse createResult(final List<SerialPort> ports) {
         return DefaultScanResponse.of(getTransactionId(), ports);
     }
+
 }
