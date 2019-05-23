@@ -62,7 +62,7 @@ public interface ManagementRequest extends TransactionMessage {
 
         ConnectResponse createErrorResponse(String error);
 
-        ConnectResponse createSuccecssResponse(ActorRef modem);
+        ConnectResponse createSuccecssResponse(ActorRef modem, String portName);
     }
 
     interface ScanRequest extends ManagementRequest {

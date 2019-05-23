@@ -206,7 +206,9 @@ public class ModemConfiguration {
                 AtCommand.of("AT"),
                 AtCommand.of("ATZ"),
                 AtCommand.of("ATE"),
-                AtCommand.of("ATV1")
+                AtCommand.of("ATV1"),
+                AtCommand.of("AT+CREG=2"),
+                AtCommand.of("AT+CGEREP=2,1")
         };
 
         public Builder() {

@@ -31,8 +31,8 @@ public class DefaultConnectRequest extends DefaultManagementRequest implements M
     }
 
     @Override
-    public ConnectResponse createSuccecssResponse(final ActorRef modem) {
+    public ConnectResponse createSuccecssResponse(final ActorRef modem, final String portName) {
         assertNotNull(modem, "The referencec to the modem cannot be null");
-        return new SuccessConnectResponse(getTransactionId(), modem);
+        return new SuccessConnectResponse(getTransactionId(), modem, portName);
     }
 }

@@ -2,6 +2,7 @@ package io.snice.modem.actors;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.snice.buffer.Buffers;
 import io.snice.modem.actors.events.AtCommand;
 
 import java.time.Duration;
@@ -27,6 +28,14 @@ public class CommandConfiguration {
     }
 
     public Duration getTimeout(final AtCommand cmd) {
+        // hack for now
+        if (cmd.getCommand().startsWithIgnoreCase(Buffers.wrap("at+cops=?"))) {
+            System.err.println("longer timeout for scanning of carriers");
+            return Duration.ofSeconds(180); // 3 min
+        } else if (cmd.getCommand().startsWithIgnoreCase(Buffers.wrap("at+cops="))) {
+            System.err.println("longer timeout for attaching to");
+            return Duration.ofSeconds(180); // 3 min
+        }
         return defaultTimeout;
     }
 
@@ -49,7 +58,7 @@ public class CommandConfiguration {
 
         @JsonProperty("defaultTimeoutMs")
         public Builder withDefaultTimeoutMs(final int timeout) {
-            assertArgument(timeout > 0, "The default timeout cannot be nagive, nor zero");
+            assertArgument(timeout > 0, "The default timeout cannot be negative, nor zero");
             defaultTimeout = Duration.ofMillis(timeout);
             return this;
         }

@@ -69,7 +69,7 @@ public class ModemManagerActor implements Actor, LoggingSupport {
             } else {
                 final var actorName = connect.getPort().toString();
                 final var modem = ctx().actorOf(actorName, ModemActor.props(threadPool, port));
-                sender().tell(connect.createSuccecssResponse(modem));
+                sender().tell(connect.createSuccecssResponse(modem, actorName));
             }
 
         } else {
