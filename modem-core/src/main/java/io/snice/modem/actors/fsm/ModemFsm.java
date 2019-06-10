@@ -1,10 +1,10 @@
 package io.snice.modem.actors.fsm;
 
 import com.fazecast.jSerialComm.SerialPort;
+import io.hektor.core.LifecycleEvent;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
 import io.hektor.fsm.builder.FSMBuilder;
-import io.hektor.fsm.builder.StateBuilder;
 import io.snice.modem.actors.ModemConfiguration;
 import io.snice.modem.actors.events.FirmwareCreatedEvent;
 import io.snice.modem.actors.events.ModemConnectFailure;
@@ -15,6 +15,8 @@ import io.snice.modem.actors.messages.modem.ModemResetRequest;
 import io.snice.modem.actors.messages.modem.ModemResetResponse;
 import io.snice.modem.actors.messages.modem.ModemResponse;
 
+import java.time.Duration;
+
 public class ModemFsm {
 
     public static final Definition<ModemState, ModemContext, ModemData> definition;
@@ -23,102 +25,47 @@ public class ModemFsm {
         final FSMBuilder<ModemState, ModemContext, ModemData> builder =
                 FSM.of(ModemState.class).ofContextType(ModemContext.class).withDataType(ModemData.class);
 
-        stateDefinitionsConnecting(builder.withInitialState(ModemState.CONNECTING));
+        final var connecting = builder.withInitialState(ModemState.CONNECTING);
+        final var firmware = builder.withState(ModemState.FIRMWARE);
+        final var connected = builder.withTransientState(ModemState.CONNECTED);
+        final var reset = builder.withState(ModemState.RESET);
+        final var ready = builder.withState(ModemState.READY);
+        final var command = builder.withState(ModemState.CMD);
+        final var disconnecting = builder.withState(ModemState.DISCONNECTING);
+        final var terminated = builder.withFinalState(ModemState.TERMINATED);
 
-        stateDefinitionsFirmware(builder.withState(ModemState.FIRMWARE));
-
-        stateDefinitionsConnected(builder.withTransientState(ModemState.CONNECTED));
-
-        stateDefinitionsReset(builder.withState(ModemState.RESET));
-
-        stateDefinitionsReady(builder.withState(ModemState.READY));
-
-        stateDefinitionsCmd(builder.withState(ModemState.CMD));
-
-        stateDefinitionsDisconnecting(builder.withState(ModemState.DISCONNECTING));
-
-        // nothing really to do in the final state so...
-        builder.withFinalState(ModemState.TERMINATED);
-
-        definition = builder.build();
-    }
-
-    /**
-     * These are all the state transitions from the CONNECTING state.
-     *
-     * @param connecting
-     */
-    private static void stateDefinitionsConnecting(final StateBuilder<ModemState, ModemContext, ModemData> connecting) {
-
-        // TODO: change, just call the context instead...
-        connecting.withEnterAction(ModemFsm::onConnectingEnterAction);
-
+        connecting.withEnterAction(ModemFsm::onConnectingEnterAction); // TODO: change, just call the context instead...
         connecting.transitionTo(ModemState.FIRMWARE).onEvent(ModemMessage.class).withGuard(ModemMessage::isConnectSuccessEvent);
-
-        // eventually we'll retry different baud rates and what not but for now, we'll just
-        // give up right away because we have no patience...
         connecting.transitionTo(ModemState.DISCONNECTING).onEvent(ModemMessage.class).withGuard(ModemMessage::isConnectFailureEvent);
-    }
 
-    /**
-     * The {@link ModemState#FIRMWARE} is for setting up the necessary underlying firmware FSM
-     * and we may pick different ones depending on what we know about the underlying modem etc.
-     *
-     * Currently, it'll always be a generic modem.
-     *
-     * @param firmware
-     */
-    private static void stateDefinitionsFirmware(final StateBuilder<ModemState, ModemContext, ModemData> firmware) {
         firmware.withEnterAction((ctx, data) -> ctx.createFirmware(data.getDesiredFirmware()));
         firmware.transitionTo(ModemState.CONNECTED).onEvent(FirmwareCreatedEvent.class);
-    }
 
-    /**
-     * These are all the state transitions from the connected state.
-     *
-     * TODO: not sure I really need the connected state. Perhaps we should send ATE1 and ATV1 here to ensure
-     * we get all the echo stuff etc that we do expect? But then again, that is also what the RESET state
-     * is for so not sure...
-     *
-     * @param connected
-     */
-    private static void stateDefinitionsConnected(final StateBuilder<ModemState, ModemContext, ModemData> connected) {
         connected.transitionTo(ModemState.READY).onEvent(String.class).withGuard("TIMEOUT_CONNECTED"::equals);
         connected.transitionTo(ModemState.RESET).asDefaultTransition();
-    }
 
+        reset.withEnterAction((ctx, data) -> ctx.send(ModemResetRequest.of()));
+        reset.transitionTo(ModemState.READY).onEvent(ModemResetResponse.class);
+        reset.transitionTo(ModemState.CMD).onEvent(ModemResetResponse.class);
 
-    /**
-     * The RESET state simply issues a RESET to the modem and waits for a response. If there is a timeout,
-     * it may decide to issue a PING to the modem, perhaps cut down on some of the RESET commands and
-     * if necessary try and figure out what type of modem we're dealing with. Perhaps we need to go back to the
-     * FIRMWARE state to pick a new type of underlying firmware.
-     *
-     * Note: I haven't added all the above. Right now, it'll just go to READY on ModemResetReponse
-     *
-     * @param resetting
-     */
-    private static void stateDefinitionsReset(final StateBuilder<ModemState, ModemContext, ModemData> resetting) {
-        resetting.withEnterAction((ctx, data) -> ctx.send(ModemResetRequest.of()));
-        resetting.transitionTo(ModemState.READY).onEvent(ModemResetResponse.class);
-
-        resetting.transitionTo(ModemState.CMD).onEvent(ModemResetResponse.class);
-    }
-
-    /**
-     * While in the {@link ModemState#READY} state, we will sit and wait for any kind of {@link ModemRequest}
-     * and simply pass that onto the underlying modem. All these requests are done in transactions so we will
-     * be waiting for this request to complete before we write anything else to the modem.
-     *
-     * Note that a request can timeout but that should be handed by the underlying {@link FirmwareFsm}. Also note
-     * that we may receive unsolicited events from the modem while in any state.
-     *
-     * @param ready
-     */
-    private static void stateDefinitionsReady(final StateBuilder<ModemState, ModemContext, ModemData> ready) {
         ready.transitionTo(ModemState.CMD).onEvent(ModemRequest.class).withAction(ModemFsm::processRequest);
-
+        ready.transitionTo(ModemState.DISCONNECTING).onEvent(LifecycleEvent.Terminated.class);
         ready.transitionTo(ModemState.DISCONNECTING).onEvent(String.class).withGuard("TIMEOUT_READY"::equals);
+
+        command.transitionTo(ModemState.READY)
+                .onEvent(ModemResponse.class)
+                .withGuard((resp, ctx, data) -> data.matchTransaction(resp))
+                .withAction(ModemFsm::processTransaction);
+        command.transitionTo(ModemState.READY).onEvent(ModemResponse.class);
+
+        disconnecting.withEnterAction((ctx, data) -> {
+            ctx.shutdownPort();
+            ctx.getScheduler().schedule(() -> "TIMEOUT", Duration.ofSeconds(5));
+
+        });
+        disconnecting.transitionTo(ModemState.TERMINATED).onEvent(String.class).withGuard("TIMEOUT"::equals);
+
+        definition = builder.build();
     }
 
     /**
@@ -127,26 +74,9 @@ public class ModemFsm {
      * so that we can later re-play the scenario if we want to.
      */
     private static void processRequest(final ModemRequest req, final ModemContext ctx, final ModemData data) {
-        var transaction = ctx.newTransaction(req);
+        final var transaction = ctx.newTransaction(req);
         data.saveTransaction(transaction);
         ctx.send(req);
-    }
-
-    /**
-     * While in the {@link ModemState#CMD} we will sit and wait for new responses to the current outstanding
-     * transaction.
-     *
-     * @param command
-     */
-    private static void stateDefinitionsCmd(final StateBuilder<ModemState, ModemContext, ModemData> command) {
-
-        command.transitionTo(ModemState.READY)
-                .onEvent(ModemResponse.class)
-                .withGuard((resp, ctx, data) -> data.matchTransaction(resp))
-                .withAction(ModemFsm::processTransaction);
-
-        // Note that this means that we received a response for a non matching transaction.
-        command.transitionTo(ModemState.READY).onEvent(ModemResponse.class);
     }
 
     /**
@@ -156,15 +86,6 @@ public class ModemFsm {
     private static void processTransaction(final ModemResponse resp, final ModemContext ctx, final ModemData data) {
         final var transaction = data.consumeTransaction();
         ctx.onResponse(transaction, resp);
-    }
-
-    /**
-     * These are all the state transitions from the DISCONNECTING state.
-     *
-     * @param disconnecting
-     */
-    private static void stateDefinitionsDisconnecting(final StateBuilder<ModemState, ModemContext, ModemData> disconnecting) {
-        disconnecting.transitionTo(ModemState.TERMINATED).onEvent(String.class).withGuard("TIMEOUT"::equals);
     }
 
     /**

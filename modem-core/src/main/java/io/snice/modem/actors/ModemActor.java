@@ -72,7 +72,6 @@ public class ModemActor implements Actor, LoggingSupport {
         fsm.onEvent(msg);
         postInvocation();
         if (fsm.isTerminated()) {
-            logInfo("looks like the FSM is dead so shutting down...");
             ctx().stop();
         }
     }
@@ -99,7 +98,6 @@ public class ModemActor implements Actor, LoggingSupport {
      * any runnables or timers the FSM may have scheduled.
      */
     private void postInvocation() {
-        // processScheduledTasks();
         processCallables();
     }
 
@@ -177,13 +175,21 @@ public class ModemActor implements Actor, LoggingSupport {
         @Override
         public void onResponse(final Transaction transaction, final ModemResponse response) {
             final var sender = ((DefaultTransaction)transaction).getSender();
-            System.err.println("Responding back to: " + sender);
             sender.tell(response, self());
         }
 
         @Override
         public SerialPort getPort() {
             return port;
+        }
+
+        @Override
+        public void shutdownPort() {
+            if (port == null) {
+                return;
+            }
+
+            port.closePort();
         }
 
         @Override

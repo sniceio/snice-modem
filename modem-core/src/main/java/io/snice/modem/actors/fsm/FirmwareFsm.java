@@ -1,6 +1,8 @@
 package io.snice.modem.actors.fsm;
 
 import io.hektor.actors.io.StreamToken;
+import io.hektor.core.LifecycleEvent;
+import io.hektor.core.internal.Terminated;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
 import io.hektor.fsm.builder.StateBuilder;
@@ -13,6 +15,12 @@ import io.snice.modem.actors.messages.modem.ModemResetRequest;
 
 import java.util.Optional;
 
+import static io.snice.modem.actors.fsm.FirmwareState.PROCESSING;
+import static io.snice.modem.actors.fsm.FirmwareState.READY;
+import static io.snice.modem.actors.fsm.FirmwareState.RESET;
+import static io.snice.modem.actors.fsm.FirmwareState.TERMINATED;
+import static io.snice.modem.actors.fsm.FirmwareState.WAIT;
+
 public class FirmwareFsm {
 
     public static final Definition<FirmwareState, FirmwareContext, FirmwareData> definition;
@@ -20,52 +28,37 @@ public class FirmwareFsm {
     static {
         final var builder = FSM.of(FirmwareState.class).ofContextType(FirmwareContext.class).withDataType(FirmwareData.class);
 
-        stateDefinitionsReady(builder.withInitialState(FirmwareState.READY));
-        stateDefinitionsReset(builder.withTransientState(FirmwareState.RESET));
-        stateDefinitionWait(builder.withState(FirmwareState.WAIT));
-        stateDefinitionProcessing(builder.withTransientState(FirmwareState.PROCESSING));
-        stateDefinitionsTerminated(builder.withFinalState(FirmwareState.TERMINATED));
+        final var ready = builder.withInitialState(READY);
+        stateDefinitionsReset(builder.withTransientState(RESET));
+        stateDefinitionWait(builder.withState(WAIT));
+        stateDefinitionProcessing(builder.withTransientState(PROCESSING));
+        final var terminated = builder.withFinalState(TERMINATED);
+
+        ready.transitionTo(RESET)
+                .onEvent(ModemResetRequest.class)
+                .withGuard(FirmwareFsm::isConfiguredWithResetCommands)
+                .withAction((req, ctx, data) -> data.saveResetRequest(req));
+        ready.transitionTo(READY).onEvent(ModemResetRequest.class).withAction(FirmwareFsm::onEmptyReset);
+        ready.transitionTo(READY).onEvent(StreamToken.class).withAction(FirmwareFsm::processUnsolicitedData);
+        ready.transitionTo(WAIT).onEvent(AtCommand.class).withAction(FirmwareFsm::writeToModem);
+        ready.transitionTo(TERMINATED).onEvent(LifecycleEvent.Terminated.class).withAction(e -> System.err.println("Got Terminated for who while in READY state: " + e.getActor()));
+        ready.transitionTo(TERMINATED).onEvent(ModemDisconnect.class);
+
+        // terminated.transitionTo(TERMINATED).onEvent(LifecycleEvent.Terminated.class)
+                // .withAction(e -> System.err.println("Got Terminated for who while in TERMINATED state: " + e.getActor()));
+
 
         definition = builder.build();
     }
 
-    /**
-     * In the ready state we're just waiting for two main events, a command to write to the
-     * modem or a reset command, which forces us into the reset loop.
-     *
-     * In the ready state we are just waiting for someone to give us a command to write
-     * to the modem, which we'll do by giving the command to the Input state that will,
-     * on its enter action, write it to the modem (by using the context object, which, depending
-     * on implementation, will give it to the actor representing the inputstream success the modem.
-     *
-     * @param ready
-     */
-    private static void stateDefinitionsReady(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> ready) {
-
-        // if we are asked to RESET the modem we will enter the reset loop, assuming
-        // we have actually configured what AT commands we should use to reset ourselves.
-        // If no "reset" commands have been configured, then just ignore it...
-        ready.transitionTo(FirmwareState.RESET)
-                .onEvent(ModemResetRequest.class)
-                .withGuard(FirmwareFsm::isConfiguredWithResetCommands)
-                .withAction((req, ctx, data) -> data.saveResetRequest(req));
-        ready.transitionTo(FirmwareState.READY).onEvent(ModemResetRequest.class).withAction(FirmwareFsm::onEmptyReset);
-
-        // Seems like we can get unsolicited codes back at any given point so
-        // TODO: need to generate an event with these should be given to the context, which then can choose to
-        // do something with it, such as give it to the modem actor, that can have a list of actors that has subscribed
-        // to receive unsolicited events.
-        // So, generate an event, call the ctx.onUnsolicitedEvent or something like that...
-        ready.transitionTo(FirmwareState.READY).onEvent(StreamToken.class).withAction(t -> System.err.println("Got StreamToken while in READY " + t.getBuffer().toString()));
-
-        ready.transitionTo(FirmwareState.WAIT).onEvent(AtCommand.class).withAction(FirmwareFsm::writeToModem);
-        ready.transitionTo(FirmwareState.TERMINATED).onEvent(ModemDisconnect.class);
+    private static final void processUnsolicitedData(StreamToken token, FirmwareContext ctx, FirmwareData data) {
+        System.err.println("Got StreamToken while in READY " + token.getBuffer().toString());
     }
 
     private static void stateDefinitionsReset(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> reset) {
         reset.withEnterAction(FirmwareFsm::onEnterReset);
 
-        reset.transitionTo(FirmwareState.WAIT)
+        reset.transitionTo(WAIT)
                 .onEvent(ModemResetRequest.class)
                 .withGuard((r, ctx, data) -> data.isResetting())
                 .withAction(FirmwareFsm::sendResetCommand);
@@ -76,13 +69,13 @@ public class FirmwareFsm {
         // that right now...
         // Note that the "conversion" of the StreamToken has already been done in the processing
         // step and has been saved away on the transition to RESET again. Trace: {@link FirmwareData#saveResetResponse}
-        reset.transitionTo(FirmwareState.WAIT)
+        reset.transitionTo(WAIT)
                 .onEvent(StreamToken.class)
                 .withGuard((r, ctx, data) -> data.isResetting())
                 .withAction(FirmwareFsm::sendResetCommand);
 
         // Once we are done sending all reset commands, we'll transition back to READY.
-        reset.transitionTo(FirmwareState.READY).asDefaultTransition().withAction(FirmwareFsm::onResetCompleted);
+        reset.transitionTo(READY).asDefaultTransition().withAction(FirmwareFsm::onResetCompleted);
     }
 
     private static void onResetCompleted(final Object ignore, final FirmwareContext ctx, final FirmwareData data) {
@@ -143,10 +136,10 @@ public class FirmwareFsm {
      */
     private static void stateDefinitionWait(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> wait) {
 
-        wait.transitionTo(FirmwareState.PROCESSING).onEvent(StreamToken.class).withAction((token, ctx, data) -> data.saveStreamToken(token));
-        wait.transitionTo(FirmwareState.WAIT).onEvent(AtCommand.class).withAction((cmd, ctx, data) -> data.stashCommand(cmd));
+        wait.transitionTo(PROCESSING).onEvent(StreamToken.class).withAction((token, ctx, data) -> data.saveStreamToken(token));
+        wait.transitionTo(WAIT).onEvent(AtCommand.class).withAction((cmd, ctx, data) -> data.stashCommand(cmd));
 
-        wait.transitionTo(FirmwareState.READY)
+        wait.transitionTo(READY)
                 .onEvent(TransactionTimeout.class)
                 .withGuard((timeout, ctx, data) -> data.isCurrentTransactionTimer(timeout))
                 .withAction(FirmwareFsm::processTransactionTimeout);
@@ -173,7 +166,7 @@ public class FirmwareFsm {
         // TODO: stream token to an AT response. Perhaps some onEvent(..).withGuard(...).transform(evt -> evt.blah);
         // TODO: and then when we invoke the, in this case, the RESET state, you'll get the transformed event.
         // TODO: as it is now, the RESET state has to consume the outstanding
-        processing.transitionTo(FirmwareState.RESET)
+        processing.transitionTo(RESET)
                 .onEvent(StreamToken.class)
                 .withGuard((token, ctx, data) -> data.hasFinalResponse() && data.isResetting())
                 .withAction((token, ctx, data) -> {
@@ -183,7 +176,7 @@ public class FirmwareFsm {
 
         // if we have stashed commands we have to send those out
         // and once again end up in the WAIT <--> PROCESSING loop
-        processing.transitionTo(FirmwareState.WAIT)
+        processing.transitionTo(WAIT)
                 .onEvent(StreamToken.class)
                 .withGuard((token, ctx, data) -> data.hasFinalResponse() && data.hasStashedCommands())
                 .withAction((token, ctx, data) -> {
@@ -194,7 +187,7 @@ public class FirmwareFsm {
                     });
                 });
 
-        processing.transitionTo(FirmwareState.READY)
+        processing.transitionTo(READY)
                 .onEvent(StreamToken.class)
                 .withGuard((token, ctx, data) -> data.hasFinalResponse())
                 .withAction((token, ctx, data) -> {
@@ -202,10 +195,7 @@ public class FirmwareFsm {
                     ctx.dispatchResponse(data.consumeResponse());
                 });
 
-        processing.transitionTo(FirmwareState.WAIT).asDefaultTransition();
-    }
-
-    private static void stateDefinitionsTerminated(final StateBuilder<FirmwareState, FirmwareContext, FirmwareData> terminated) {
+        processing.transitionTo(WAIT).asDefaultTransition();
     }
 
     private static boolean isConfiguredWithResetCommands(final ModemResetRequest request, final FirmwareContext ctx, final FirmwareData data){

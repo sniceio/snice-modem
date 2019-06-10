@@ -8,11 +8,9 @@ import io.hektor.actors.io.StreamToken;
 import io.hektor.core.Actor;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
-import io.hektor.core.internal.Terminated;
 import io.hektor.fsm.FSM;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
-import io.snice.modem.actors.fsm.CachingFsmScheduler;
 import io.snice.modem.actors.fsm.CachingFsmScheduler2;
 import io.snice.modem.actors.fsm.FirmwareContext;
 import io.snice.modem.actors.fsm.FirmwareData;
@@ -24,9 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -105,17 +100,11 @@ public class ModemFirmwareActor implements Actor, LoggingSupport {
 
     @Override
     public void onReceive(final Object msg) {
-
-        if (msg instanceof Terminated) {
-            // only one that shouldn't go to the FSM. Or perhaps it should?
-            processChildDeath((Terminated) msg);
-        } else {
-            fsm.onEvent(msg);
+        fsm.onEvent(msg);
+        if (fsm.isTerminated()) {
+            System.err.println("Stopping the firmware actor");
+            ctx().stop();
         }
-    }
-
-    private void processChildDeath(final Terminated terminated) {
-        System.err.println("One of my children died: " + terminated.actor());
     }
 
     @Override

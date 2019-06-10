@@ -28,6 +28,8 @@ public interface ModemContext extends Context {
 
     SerialPort getPort();
 
+    void shutdownPort();
+
     void runJob(final Callable<Object> job);
 
     Transaction newTransaction(ModemRequest request);

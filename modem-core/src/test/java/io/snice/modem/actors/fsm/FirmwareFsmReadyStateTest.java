@@ -1,14 +1,14 @@
 package io.snice.modem.actors.fsm;
 
+import io.hektor.core.ActorPath;
+import io.hektor.core.LifecycleEvent;
+import io.hektor.core.internal.Terminated;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.messages.modem.ModemResetRequest;
-import org.hamcrest.CoreMatchers;
 import org.junit.Test;
-import org.mockito.ArgumentMatchers;
 
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.any;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,7 +28,7 @@ public class FirmwareFsmReadyStateTest extends FirmwareFsmTestBase {
      */
     @Test
     public void testOnAtCommand() throws Exception {
-        var cmd = AtCommand.of("AT+COPS=?");
+        final var cmd = AtCommand.of("AT+COPS=?");
         fsm.onEvent(cmd);
         verify(ctx).writeToModem(cmd);
         assertThat(fsm.getState(), is(FirmwareState.WAIT));
@@ -50,6 +50,20 @@ public class FirmwareFsmReadyStateTest extends FirmwareFsmTestBase {
         fsm.onEvent(ModemResetRequest.of());
         assertThat(fsm.getState(), is(FirmwareState.READY));
         verify(ctx, never()).writeToModem(any());
+    }
+
+    /**
+     * When a child terminates, which can only be one of the two actors that is connected to the underlying
+     * serial port, then we'll just give up and transition to terminated, which will kill our state machine
+     * too, which then the ModemActor will get and can deal with.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testChildTermination() {
+        assertState(FirmwareState.READY);
+        fsm.onEvent(LifecycleEvent.terminated(ActorPath.of("whatever")));
+        assertState(FirmwareState.TERMINATED);
     }
 
 
