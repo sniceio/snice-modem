@@ -88,6 +88,17 @@ public class ModemConfiguration {
         this.cmdConfig = cmdConfig;
     }
 
+    public String diff(final ModemConfiguration other) {
+        var builder = new StringBuilder();
+        builder.append("BaudRate: ").append(baudRate).append(" - ").append(other.baudRate).append("\r\n");
+        builder.append("ReadTimeout: ").append(readTimeout).append(" - ").append(other.readTimeout).append("\r\n");
+        // builder.append("S3").append(s3).append(" - ").append(other.s3).append("\r\n");
+        // builder.append("S4").append(s4).append(" - ").append(other.s4).append("\r\n");
+        builder.append("VerboseResponseFormat: ").append(verboseResponseFormat).append(" - ").append(other.verboseResponseFormat).append("\r\n");
+        builder.append("ResetCmds: ").append(resetCommands).append(" - ").append(other.resetCommands).append("\r\n");
+        return builder.toString();
+    }
+
     public Optional<ItuResultCodes> matchResultCode(final Buffer buffer) {
         return ituResultCodes.stream().filter(code -> code.match(buffer)).findFirst();
     }
@@ -218,7 +229,7 @@ public class ModemConfiguration {
 
         @JsonProperty("s3")
         public Builder withS3(final String s3) {
-            assertArgument(!s3.isEmpty(), "You must specify the S3 characther if you do indeed put it into the config file");
+            assertArgument(!s3.isEmpty(), "You must specify the S3 character if you do indeed put it into the config file");
             assertArgument(s3.length() > 1, "The S3 argument can only have a single characther");
             this.s3 = s3.charAt(0);
             if (this.s3 == '\r') {
@@ -231,7 +242,7 @@ public class ModemConfiguration {
 
         @JsonProperty("s4")
         public Builder withS4(final String s4) {
-            assertArgument(!s4.isEmpty(), "You must specify the S4 characther if you do indeed put it into the config file");
+            assertArgument(!s4.isEmpty(), "You must specify the S4 character if you do indeed put it into the config file");
             assertArgument(s4.length() > 1, "The S4 argument can only have a single characther");
             this.s4 = s4.charAt(0);
             return this;

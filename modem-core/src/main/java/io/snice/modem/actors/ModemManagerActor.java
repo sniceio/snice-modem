@@ -31,15 +31,19 @@ public class ModemManagerActor implements Actor, LoggingSupport {
      */
     private final ExecutorService threadPool;
 
+    private final ModemConfiguration config;
+
     private final Map<String, SerialPort> ports = new HashMap<>();
 
-    public static Props props(final ExecutorService threadPool) {
+    public static Props props(final ExecutorService threadPool, final ModemConfiguration config) {
         assertNotNull(threadPool, "The thread pool used for blocking IO operations cannot be null");
-        return Props.forActor(ModemManagerActor.class, () -> new ModemManagerActor(threadPool));
+        assertNotNull(config, "The Configuration cannot be null");
+        return Props.forActor(ModemManagerActor.class, () -> new ModemManagerActor(threadPool, config));
     }
 
-    private ModemManagerActor(final ExecutorService threadPool) {
+    private ModemManagerActor(final ExecutorService threadPool, final ModemConfiguration config) {
         this.threadPool = threadPool;
+        this.config = config;
     }
 
     @Override
@@ -68,7 +72,7 @@ public class ModemManagerActor implements Actor, LoggingSupport {
                 sender().tell(connect.createErrorResponse("No such port"), self());
             } else {
                 final var actorName = connect.getPort().toString();
-                final var modem = ctx().actorOf(actorName, ModemActor.props(threadPool, port));
+                final var modem = ctx().actorOf(actorName, ModemActor.props(threadPool, config, port));
                 sender().tell(connect.createSuccecssResponse(modem, actorName));
             }
 

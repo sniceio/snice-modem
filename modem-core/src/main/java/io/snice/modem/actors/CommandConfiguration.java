@@ -30,11 +30,11 @@ public class CommandConfiguration {
     public Duration getTimeout(final AtCommand cmd) {
         // hack for now
         if (cmd.getCommand().startsWithIgnoreCase(Buffers.wrap("at+cops=?"))) {
-            System.err.println("longer timeout for scanning of carriers");
             return Duration.ofSeconds(180); // 3 min
         } else if (cmd.getCommand().startsWithIgnoreCase(Buffers.wrap("at+cops="))) {
-            System.err.println("longer timeout for attaching to");
             return Duration.ofSeconds(180); // 3 min
+        } else if (cmd.getCommand().startsWithIgnoreCase(Buffers.wrap("atd"))) {
+            return Duration.ofSeconds(30);
         }
         return defaultTimeout;
     }

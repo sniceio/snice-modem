@@ -8,12 +8,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.hektor.config.HektorConfiguration;
-import io.hektor.core.ActorRef;
 import io.hektor.core.Hektor;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
-import io.snice.modem.actors.ModemManagerActor;
-import sh.modem.actors.ShellActor;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -52,7 +49,7 @@ public class Shell {
         final ExecutorService blockingIoPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 4);
 
         final Hektor hektor = Hektor.withName("modem.sh").withConfiguration(hektorConfig).build();
-        final ActorRef modemManager = hektor.actorOf(ModemManagerActor.props(blockingIoPool), "modem_manager");
-        final ActorRef shell = hektor.actorOf(ShellActor.props(shellConfig, blockingIoPool, modemManager, System.in, System.out), "shell");
+        // final ActorRef modemManager = hektor.actorOf(ModemManagerActor.props(blockingIoPool), "modem_manager");
+        // final ActorRef shell = hektor.actorOf(ShellActor.props(shellConfig, blockingIoPool, modemManager, System.in, System.out), "shell");
     }
 }

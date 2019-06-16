@@ -2,7 +2,6 @@ package io.snice.modem.actors.fsm;
 
 import io.hektor.actors.io.StreamToken;
 import io.hektor.core.LifecycleEvent;
-import io.hektor.core.internal.Terminated;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
 import io.hektor.fsm.builder.StateBuilder;
@@ -51,7 +50,16 @@ public class FirmwareFsm {
         definition = builder.build();
     }
 
-    private static final void processUnsolicitedData(StreamToken token, FirmwareContext ctx, FirmwareData data) {
+    /**
+     * We can get, at any point, unsolicited data from the modem. We need to try to interpret that data
+     * and send it to the parent, who will decide what to do with it. If we are unable to intepret the data
+     * we'll say so. We'd like to avoid the upper layers having to parse the data from the modem, since it really
+     * should be in a single place.
+     * @param token
+     * @param ctx
+     * @param data
+     */
+    private static final void processUnsolicitedData(final StreamToken token, final FirmwareContext ctx, final FirmwareData data) {
         System.err.println("Got StreamToken while in READY " + token.getBuffer().toString());
     }
 
@@ -74,8 +82,11 @@ public class FirmwareFsm {
                 .withGuard((r, ctx, data) -> data.isResetting())
                 .withAction(FirmwareFsm::sendResetCommand);
 
+        reset.transitionTo(READY).onEvent(TransactionTimeout.class).withAction(e -> System.err.println("Timeout: " + e));
+
         // Once we are done sending all reset commands, we'll transition back to READY.
         reset.transitionTo(READY).asDefaultTransition().withAction(FirmwareFsm::onResetCompleted);
+
     }
 
     private static void onResetCompleted(final Object ignore, final FirmwareContext ctx, final FirmwareData data) {

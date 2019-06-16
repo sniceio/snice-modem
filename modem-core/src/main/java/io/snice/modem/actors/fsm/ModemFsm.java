@@ -9,6 +9,7 @@ import io.snice.modem.actors.ModemConfiguration;
 import io.snice.modem.actors.events.FirmwareCreatedEvent;
 import io.snice.modem.actors.events.ModemConnectFailure;
 import io.snice.modem.actors.events.ModemConnectSuccess;
+import io.snice.modem.actors.events.TransactionTimeout;
 import io.snice.modem.actors.messages.modem.ModemMessage;
 import io.snice.modem.actors.messages.modem.ModemRequest;
 import io.snice.modem.actors.messages.modem.ModemResetRequest;
@@ -46,7 +47,7 @@ public class ModemFsm {
 
         reset.withEnterAction((ctx, data) -> ctx.send(ModemResetRequest.of()));
         reset.transitionTo(ModemState.READY).onEvent(ModemResetResponse.class);
-        reset.transitionTo(ModemState.CMD).onEvent(ModemResetResponse.class);
+        reset.transitionTo(ModemState.READY).onEvent(TransactionTimeout.class);
 
         ready.transitionTo(ModemState.CMD).onEvent(ModemRequest.class).withAction(ModemFsm::processRequest);
         ready.transitionTo(ModemState.DISCONNECTING).onEvent(LifecycleEvent.Terminated.class);

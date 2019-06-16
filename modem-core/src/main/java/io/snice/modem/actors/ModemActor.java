@@ -50,19 +50,20 @@ public class ModemActor implements Actor, LoggingSupport {
 
     private final ModemConfiguration config;
 
-    public static Props props(final ExecutorService blockingIoPool, final SerialPort port) {
+    public static Props props(final ExecutorService blockingIoPool, final ModemConfiguration config, final SerialPort port) {
         assertNotNull(blockingIoPool, "The thread pool used for blocking IO operations cannot be null");
+        assertNotNull(config, "The configuration cannot be null");
         assertNotNull(port, "The serial port cannot be null");
-        return Props.forActor(ModemActor.class, () -> new ModemActor(blockingIoPool, port));
+        return Props.forActor(ModemActor.class, () -> new ModemActor(blockingIoPool, config, port));
     }
 
-    private ModemActor(final ExecutorService blockingIoPool, final SerialPort port) {
+    private ModemActor(final ExecutorService blockingIoPool, final ModemConfiguration config, final SerialPort port) {
         cachingThreadPool = new CachingExecutorService();
 
         this.blockingIoPool = blockingIoPool;
 
         // TODO: need to actually come from the yaml file!
-        config = ModemConfiguration.of().build();
+        this.config = config;
         modemCtx = new ActorModemContext(port);
         data = new ModemData();
     }

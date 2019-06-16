@@ -45,7 +45,6 @@ public class AtResponse extends TransactionMessageImpl implements ModemResponse 
         this.isSuccess = isSuccess;
         this.cmd = cmd;
         this.response = response;
-
     }
 
     /**
