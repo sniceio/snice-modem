@@ -15,7 +15,7 @@
     <name>Snice Modem</name>
     <groupId>io.snice.modem</groupId>
     <artifactId>snice-parent</artifactId>
-    <version>0.1.0</version>
+    <version>0.1.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <description>Snice Modem - A Super Nice GSM Modem</description>
     <licenses>
