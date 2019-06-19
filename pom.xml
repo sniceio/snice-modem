@@ -38,14 +38,14 @@
     <scm>
         <connection>scm:git:git@github.com:sniceio/snice-modem.git</connection>
         <developerConnection>scm:git:git@github.com:sniceio/snice-modem.git</developerConnection>
-        <url>git@github.com:sniceio/snice-modem.git</url>
+	<url>git@github.com:sniceio/snice-modem.git</url>
         <tag>HEAD</tag>
     </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <snice-commons.version>0.1.0-SNAPSHOT</snice-commons.version>
-        <hektor.version>0.0.1-SNAPSHOT</hektor.version>
+        <snice-commons.version>0.1.1</snice-commons.version>
+        <hektor.version>0.0.2</hektor.version>
         <logback.version>1.2.3</logback.version>
         <sl4j.version>1.7.25</sl4j.version>
         <jackson.version>2.9.9</jackson.version>
