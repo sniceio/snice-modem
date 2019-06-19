@@ -13,7 +13,7 @@
         <version>7</version>
     </parent>
 
-    <name>Snice Commons</name>
+    <name>Snice Modem</name>
     <groupId>io.snice.modem</groupId>
     <artifactId>snice-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
