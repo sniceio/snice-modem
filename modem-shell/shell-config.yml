@@ -3,6 +3,13 @@ console:
     appendEolIfNecessary: true
     alwaysFlush: true
 
+usb:
+  whiteList:
+    # Quectel
+    - 2c7c
+    # Sierra Wireless
+    - 1199
+
 modem:
 
   # Whenever we need to reset the modem we will execute the following
