@@ -3,23 +3,18 @@ package io.snice.usb;
 import io.hektor.fsm.Scheduler;
 import io.snice.usb.fsm.UsbManagerContext;
 
-import javax.usb.UsbServices;
+import java.util.Map;
 
 public class ActorUsbManagerContext implements UsbManagerContext {
 
-    private final UsbServices usbServices;
     private final UsbConfiguration config;
     private final UsbScanner scanner;
+    private final Map<String, VendorDescriptor> knownUsbVendors;
 
-    public ActorUsbManagerContext(final UsbServices usbServices, final UsbScanner scanner, final UsbConfiguration config) {
-        this.usbServices = usbServices;
+    public ActorUsbManagerContext(final UsbScanner scanner, final UsbConfiguration config, final Map<String, VendorDescriptor> knownUsbVendors) {
         this.scanner = scanner;
         this.config = config;
-    }
-
-    @Override
-    public UsbServices getUsbServices() {
-        return usbServices;
+        this.knownUsbVendors = knownUsbVendors;
     }
 
     @Override

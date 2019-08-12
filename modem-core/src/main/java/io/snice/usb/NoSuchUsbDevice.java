@@ -26,18 +26,18 @@ public class NoSuchUsbDevice extends UsbException {
 
     public static NoSuchUsbDevice of(final UsbDeviceDescriptor desc) {
         PreConditions.assertNotNull(desc, "The usb device descriptor cannot be null");
-        return new NoSuchUsbDevice(desc.getVendorId(), desc.getDeviceId());
+        return new NoSuchUsbDevice(desc.getVendorId(), desc.getProductId());
     }
 
     public static NoSuchUsbDevice of(final UsbDeviceDescriptor desc, final String linuxDevice) {
         PreConditions.assertNotNull(desc, "The usb device descriptor cannot be null");
         PreConditions.assertNotEmpty(linuxDevice, "The linux device no cannot be the empty string or null");
-        return new NoSuchUsbDevice(desc.getVendorId(), desc.getDeviceId(), linuxDevice);
+        return new NoSuchUsbDevice(desc.getVendorId(), desc.getProductId(), linuxDevice);
     }
 
     public static NoSuchUsbDevice of(final UsbDeviceDescriptor desc, final int linuxDevice) {
         PreConditions.assertNotNull(desc, "The usb device descriptor cannot be null");
         PreConditions.assertArgument(linuxDevice >= 0 , "The linux device no cannot be less than zero");
-        return new NoSuchUsbDevice(desc.getVendorId(), desc.getDeviceId(), Integer.toString(linuxDevice));
+        return new NoSuchUsbDevice(desc.getVendorId(), desc.getProductId(), Integer.toString(linuxDevice));
     }
 }

@@ -9,14 +9,11 @@ import io.snice.usb.fsm.UsbManagerState;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.usb.UsbServices;
-
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 public class UsbManagerActorTest extends UsbTestBase {
 
-    private UsbServices usbServices;
     private UsbManagerContext usbManagerContext;
     private UsbManagerData data;
     private UsbScanner scanner;
@@ -26,14 +23,14 @@ public class UsbManagerActorTest extends UsbTestBase {
 
     private FsmActor<UsbManagerState, UsbManagerContext, UsbManagerData> actor;
 
+    @Override
     @Before
     public void setup() throws Exception {
         super.setup();;
         data = new UsbManagerData();
-        usbServices = mock(UsbServices.class);
         scanner = mock(UsbScanner.class);
 
-        usbManagerContext = new ActorUsbManagerContext(usbServices, scanner, config);
+        usbManagerContext = new ActorUsbManagerContext(scanner, config, knownUsbVendors);
 
         onStart = mock(OnStartFunction.class);
         onStop = mock(OnStopFunction.class);

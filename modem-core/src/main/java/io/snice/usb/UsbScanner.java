@@ -15,5 +15,5 @@ public interface UsbScanner {
      * @param descriptor
      * @return
      */
-    Optional<UsbDevice> find(UsbDeviceDescriptor descriptor) throws IOException;
+    Optional<UsbDevice> find(UsbDeviceDescriptor descriptor) throws UsbException;
 }

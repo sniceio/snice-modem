@@ -5,6 +5,7 @@ import io.snice.usb.UsbInterfaceDescriptor;
 
 import javax.usb.UsbPort;
 import java.util.List;
+import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -27,8 +28,13 @@ public class JavaxUsbDeviceWrapper implements UsbDeviceDescriptor {
     }
 
     @Override
-    public String getDeviceId() {
+    public String getProductId() {
         return format(javaxUsb.getUsbDeviceDescriptor().idProduct());
+    }
+
+    @Override
+    public Optional<String> getVendorDescription() {
+        return Optional.empty();
     }
 
     @Override

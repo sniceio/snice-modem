@@ -4,10 +4,9 @@ import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
 import io.snice.usb.UsbEvent;
 import io.snice.usb.UsbEvent.UsbAttachEvent;
+import io.snice.usb.UsbException;
 import io.snice.usb.UsbManagementEvent.ScanEvent;
 import io.snice.usb.UsbManagementEvent.TerminateEvent;
-
-import java.io.IOException;
 
 import static io.snice.usb.fsm.UsbManagerState.ATTACH;
 import static io.snice.usb.fsm.UsbManagerState.DETACH;
@@ -47,7 +46,7 @@ public class UsbManagerFsm {
 
     private static boolean processEvent(final UsbAttachEvent evt, final UsbManagerContext ctx, final UsbManagerData data) {
         final var desc = evt.getUsbDeviceDescriptor();
-        return ctx.getConfig().processDevice(desc.getVendorId(), desc.getDeviceId());
+        return ctx.getConfig().processDevice(desc.getVendorId(), desc.getProductId());
     }
 
     private static final void onAttach(final UsbAttachEvent evt, final UsbManagerContext ctx, final UsbManagerData data) {
@@ -55,7 +54,7 @@ public class UsbManagerFsm {
             final var descriptor = evt.getUsbDeviceDescriptor();
             final var device = ctx.getUsbScanner().find(descriptor);
             device.ifPresent(dev -> ctx.deviceAttached(dev));
-        } catch (final IOException e) {
+        } catch (final UsbException e) {
             e.printStackTrace();
         }
     }

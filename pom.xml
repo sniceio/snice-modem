@@ -43,7 +43,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <snice-commons.version>0.1.1</snice-commons.version>
+        <snice-commons.version>0.1.2-SNAPSHOT</snice-commons.version>
         <hektor.version>0.0.2</hektor.version>
         <logback.version>1.2.3</logback.version>
         <sl4j.version>1.7.25</sl4j.version>

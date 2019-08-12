@@ -1,9 +1,11 @@
 package io.snice.usb;
 
+import io.snice.usb.impl.UsbIdLoader;
 import org.junit.Before;
 
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.Map;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -16,6 +18,8 @@ public class UsbTestBase {
     protected UsbDeviceDescriptor quectelDescriptor;
     protected UsbDeviceDescriptor sierraDescriptor;
 
+    protected final static Map<String, VendorDescriptor> knownUsbVendors = UsbIdLoader.load();
+
     @Before
     public void setup() throws Exception {
         devicesPath = findResource("devices");
@@ -25,11 +29,11 @@ public class UsbTestBase {
         // Quectel BG96
         quectelDescriptor = mock(UsbDeviceDescriptor.class);
         when(quectelDescriptor.getVendorId()).thenReturn("2c7c");
-        when(quectelDescriptor.getDeviceId()).thenReturn("0296");
+        when(quectelDescriptor.getProductId()).thenReturn("0296");
 
         // Sierra Wireless MC7455
         when(quectelDescriptor.getVendorId()).thenReturn("1199");
-        when(quectelDescriptor.getDeviceId()).thenReturn("9071");
+        when(quectelDescriptor.getProductId()).thenReturn("9071");
         sierraDescriptor = mock(UsbDeviceDescriptor.class);
     }
 

@@ -93,7 +93,8 @@ public class UsbConfiguration {
          * have that one, we can check (also in dmesg) for where the device ended up in
          * sysfs, which is where we'll find the rest of the info we are a looking for.
          */
-        private final String DEFAULT_SYSFS_CMD = "dmesg | grep \"device number %s\"";
+        // private final String DEFAULT_SYSFS_CMD = "dmesg | egrep \"new*.USB device number %s\"";
+        private final String DEFAULT_SYSFS_CMD = "dmesg | egrep \"New USB device found.*idVendor=%s, idProduct=%s\"";
 
         private final static String DEFAULT_LSUSB_CMD = "lsusb -d %s:%s";
 

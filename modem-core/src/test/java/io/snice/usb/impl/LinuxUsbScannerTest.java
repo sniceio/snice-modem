@@ -2,9 +2,11 @@ package io.snice.usb.impl;
 
 import io.snice.usb.UsbConfiguration;
 import io.snice.usb.UsbTestBase;
+import io.snice.usb.VendorDescriptor;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -13,6 +15,7 @@ public class LinuxUsbScannerTest extends UsbTestBase {
 
     private UsbConfiguration config;
     private LinuxUsbScanner scanner;
+    private final Map<String, VendorDescriptor> knownUsbVendors = UsbIdLoader.load();
 
     @Override
     @Before
@@ -29,11 +32,12 @@ public class LinuxUsbScannerTest extends UsbTestBase {
         final var lsusbLog = findResource("lsusb_quectel.log");
         final var lsusbCmd = "cat " + lsusbLog.normalize().toString();
 
+
         config = UsbConfiguration.of()
                 .withDevicesPath(devicesPath)
                 .withFindDeviceNoCmd(lsusbCmd)
                 .withFindSysfsCmd(dmesgCmd).build();
-        scanner = LinuxUsbScanner.of(config);
+        scanner = LinuxUsbScanner.of(config, knownUsbVendors);
     }
 
     @Test
@@ -55,7 +59,7 @@ public class LinuxUsbScannerTest extends UsbTestBase {
 
     @Test
     public void testLoadDevice() throws Exception {
-        scanner.createDevice(quectelDescriptor, "1-3", devicesPath);
+        // scanner.createDevice(quectelDescriptor, "1-3", devicesPath);
     }
 
     @Test
@@ -74,7 +78,7 @@ public class LinuxUsbScannerTest extends UsbTestBase {
     @Test
     public void testForReal() throws Exception {
         config = UsbConfiguration.of().build();
-        scanner = LinuxUsbScanner.of(config);
+        scanner = LinuxUsbScanner.of(config, knownUsbVendors);
 
         System.out.println(scanner.scan());
     }

@@ -9,8 +9,6 @@ import javax.usb.UsbServices;
 
 public interface UsbManagerContext extends Context {
 
-    UsbServices getUsbServices();
-
     UsbConfiguration getConfig();
 
     UsbScanner getUsbScanner();

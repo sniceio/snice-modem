@@ -1,21 +1,37 @@
 package io.snice.usb;
 
-import java.util.List;
+import io.snice.usb.impl.LinuxUsbDeviceDescriptor;
 
-import static io.snice.preconditions.PreConditions.assertNotEmpty;
+import java.util.List;
+import java.util.Optional;
 
 public interface UsbDeviceDescriptor {
 
-    static Builder ofVendorId(final String vendorId) {
-        assertNotEmpty(vendorId, "The VendorId cannot be null or the empty String");
+    static ProductIdStep ofVendorId(final String vendorId) {
+        return LinuxUsbDeviceDescriptor.ofVendorId(vendorId);
     }
 
     String getVendorId();
-    String getDeviceId();
+    String getProductId();
+
+    /**
+     * A human friendly description of the vendor.
+     *
+     * This description is only meant for human consumption and has
+     * not bearing, or use, to the running logic.
+     */
+    Optional<String> getVendorDescription();
 
     List<UsbInterfaceDescriptor> getInterfaces();
 
-    class Builder {
-
+    interface ProductIdStep {
+        Builder withProductId(String productId);
     }
+
+    interface Builder {
+        Builder withVendorDescription(String description);
+
+        UsbDeviceDescriptor build();
+    }
+
 }

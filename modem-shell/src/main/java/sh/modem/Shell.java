@@ -22,7 +22,9 @@ import io.snice.usb.fsm.UsbManagerData;
 import io.snice.usb.fsm.UsbManagerFsm;
 import io.snice.usb.impl.DefaultUsbEvent;
 import io.snice.usb.impl.JavaxUsbDeviceWrapper;
+import io.snice.usb.impl.LinuxUsbDmesgMonitor;
 import io.snice.usb.impl.LinuxUsbScanner;
+import io.snice.usb.impl.UsbIdLoader;
 
 import javax.usb.UsbDevice;
 import javax.usb.UsbDeviceDescriptor;
@@ -79,28 +81,19 @@ public class Shell {
         return null;
     }
 
-    private static Props configureUsbManager(final UsbConfiguration usbConfiguration) throws UsbException {
+    private static Props configureUsbManager(final ExecutorService blockingIoPool, final UsbConfiguration usbConfiguration) throws UsbException {
 
-        final UsbServices services = UsbHostManager.getUsbServices();
-        final UsbScanner scanner = LinuxUsbScanner.of(usbConfiguration);
+        final var knownUsbVendors = UsbIdLoader.load();
+        final var scanner = LinuxUsbScanner.of(usbConfiguration, knownUsbVendors);
 
-        final ActorUsbManagerContext usbManagerCtx = new ActorUsbManagerContext(services, scanner, usbConfiguration);
+        final ActorUsbManagerContext usbManagerCtx = new ActorUsbManagerContext(scanner, usbConfiguration, knownUsbVendors);
 
         final UsbManagerData usbManagerData = new UsbManagerData();
 
         final OnStartFunction<UsbManagerContext, UsbManagerData> onStart = (actorCtx, ctx, data) -> {
-            ctx.getUsbServices().addUsbServicesListener(new UsbServicesListener() {
-                @Override
-                public void usbDeviceAttached(final UsbServicesEvent event) {
-                    actorCtx.self().tell(DefaultUsbEvent.attachEvent(JavaxUsbDeviceWrapper.of(event.getUsbDevice())));
-                }
-
-                @Override
-                public void usbDeviceDetached(final UsbServicesEvent event) {
-                    System.err.println("TODO: implemented detach");
-                    // actorCtx.self().tell(DefaultUsbEvent.detachEvent(JavaxUsbDeviceWrapper.of(event.getUsbDevice())));
-                }
-            });
+            System.err.println("I guess the FSM is starting. This is pretty cool actually");
+            var props = LinuxUsbDmesgMonitor.props(blockingIoPool, usbConfiguration, scanner);
+            var usbMonitor = actorCtx.actorOf("monitor", props);
         };
 
         return FsmActor.of(UsbManagerFsm.definition)
@@ -127,7 +120,7 @@ public class Shell {
         // final var props = FsmActor.of(UsbManagerFsm.definition).build();
 
         // final ActorRef usbManager = hektor.actorOf(UsbManagerActor.props(services, usbConfiguration), "usb");
-        final var usbProps = configureUsbManager(shellConfig.getUsbConfiguration());
+        final var usbProps = configureUsbManager(blockingIoPool, shellConfig.getUsbConfiguration());
         hektor.actorOf(usbProps, "usb");
 
         // final ActorRef modemManager = hektor.actorOf(ModemManagerActor.props(blockingIoPool), "modem_manager");
