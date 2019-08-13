@@ -16,4 +16,6 @@ public interface UsbScanner {
      * @return
      */
     Optional<UsbDevice> find(UsbDeviceDescriptor descriptor) throws UsbException;
+
+    List<UsbDevice> find(final String vendorId, final String productId) throws UsbException;
 }

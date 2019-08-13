@@ -51,6 +51,11 @@ public class LibUsbScanner implements UsbScanner {
         throw new RuntimeException("Not yet implemented");
     }
 
+    @Override
+    public List<UsbDevice> find(final String vendorId, final String productId) throws io.snice.usb.UsbException {
+        return null;
+    }
+
     /**
      * Dumps the specified USB device to stdout.
      *

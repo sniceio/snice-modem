@@ -1,6 +1,9 @@
 package io.snice.usb.impl;
 
+import io.hektor.actors.LoggingSupport;
+import io.snice.processes.Processes;
 import io.snice.usb.NoSuchUsbDevice;
+import io.snice.usb.UsbAlertCode;
 import io.snice.usb.UsbConfiguration;
 import io.snice.usb.UsbDevice;
 import io.snice.usb.UsbDeviceDescriptor;
@@ -9,6 +12,8 @@ import io.snice.usb.UsbScanner;
 import io.snice.usb.VendorDescriptor;
 import io.snice.usb.VendorDeviceDescriptor;
 import io.snice.usb.impl.LinuxUsbDeviceDescriptor.LinuxBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -20,18 +25,30 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public class LinuxUsbScanner implements UsbScanner {
+public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
+
+    private static final Logger logger = LoggerFactory.getLogger(LinuxUsbScanner.class);
 
     private final static String DEFAULT_USB_SERIAL_FS = "/sys/bus/usb-serial/devices";
 
     private final static String DEFAULT_DMESG = "/sys/bus/usb-serial/devices";
 
     private final static Pattern DMESG_SYSFS_PATTERN = Pattern.compile("\\[.*\\] usb (\\d-\\d[\\.\\d]*): .*");
+
+    // TODO: needs to be configured.
+    private static final String USB_DEVICE_CONNECTED_REGEXP = "\\[.*\\] usb (\\d-\\d[\\.\\d]*): *New USB device found, idVendor=([a-f,A-F,0-9]+), idProduct=([a-f,A-F,0-9]+).*";
+
+    // TODO: needs to be configured
+    private static final String LSUSB_CMD = "lsusb -d %s:%s";
+
+    private final Pattern dmesgNewDevicePattern;
 
     private final UsbConfiguration config;
     private final ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -40,17 +57,67 @@ public class LinuxUsbScanner implements UsbScanner {
 
     public static LinuxUsbScanner of(final UsbConfiguration config, final Map<String, VendorDescriptor> knownUsbVendors) {
         assertNotNull(config, "The configuration cannot be null");
-        return new LinuxUsbScanner(config, knownUsbVendors == null ? Collections.emptyMap() : knownUsbVendors);
+
+        // TODO: get from config file
+        final var pattern = Pattern.compile(USB_DEVICE_CONNECTED_REGEXP);
+        return new LinuxUsbScanner(config, knownUsbVendors == null ? Collections.emptyMap() : knownUsbVendors, pattern);
     }
 
     public static LinuxUsbScanner of(final UsbConfiguration config) {
         return of(config, null);
     }
 
-    public void monitor() {
+    private LinuxUsbScanner(final UsbConfiguration config, final Map<String, VendorDescriptor> knownUsbVendors, final Pattern dmesgNewDevicePattern) {
+        this.config = config;
+        this.knownUsbVendors = knownUsbVendors;
+        this.dmesgNewDevicePattern = dmesgNewDevicePattern;
+    }
 
+    /**
+     * Unique to Linux. The {@link LinuxUsbDmesgMonitor} is "tailing" dmesg and whenever it detects a
+     * "New USB device connected" message, it'll call this method to setup the new {@link LinuxUsbDevice}
+     *
+     * @param dmesg
+     * @return
+     */
+    public List<LinuxUsbDevice> processDmesgNewDevice(final String dmesg) {
+        final var matcher = dmesgNewDevicePattern.matcher(dmesg);
+        if (!matcher.matches() || matcher.groupCount() != 3) {
+            // TODO: this should throw exception
+            logWarn(UsbAlertCode.UNABLE_TO_PARSE_DMESG_NEW_USB_DEVICE, dmesg, dmesgNewDevicePattern.pattern());
+            return List.of();
+        }
 
+        final var sysfs = matcher.group(1);
+        final var vendorId = matcher.group(2);
+        final var productId = matcher.group(3);
 
+        if (isRootHub(vendorId, productId)) {
+            System.err.println("Skipping root hub " + dmesg);
+            return List.of();
+        }
+
+        try {
+            final var cmd = String.format(LSUSB_CMD, vendorId, productId);
+            final var usbDevices = Processes.execute(cmd).toCompletableFuture().get(5000, TimeUnit.MILLISECONDS).stream()
+                    .map(LinuxUsbScanner::mapToDeviceDescriptor)
+                    .map(desc -> LinuxUsbDevice.of(desc).withDevicePath(sysfs).withLinuxSysfsDevicesPath(config.getDevicesFolder()).build())
+                    .collect(Collectors.toList());
+            System.out.println(usbDevices);
+            return usbDevices;
+        } catch (final TimeoutException e) {
+            e.printStackTrace();
+        } catch (final Throwable e) {
+            e.printStackTrace();
+        }
+        return List.of();
+
+    }
+
+    @Override
+    public List<UsbDevice> find(final String vendorId, final String productId) throws UsbException {
+        final var device = find(LinuxUsbDeviceDescriptor.ofVendorId(vendorId).withProductId(productId).build());
+        return device.isPresent() ? List.of(device.get()) : List.of();
     }
 
     @Override
@@ -82,17 +149,21 @@ public class LinuxUsbScanner implements UsbScanner {
     }
 
     private boolean isRootHub(final UsbDeviceDescriptor descriptor) {
-        final var device = lookup(descriptor);
+        return isRootHub(descriptor.getVendorId(), descriptor.getProductId());
+    }
+
+    private boolean isRootHub(final String vendorId, final String productId) {
+        final var device = lookup(vendorId, productId);
         return device.map(VendorDeviceDescriptor::getDescription).orElse("").toLowerCase().contains("root hub");
     }
 
-    private Optional<VendorDeviceDescriptor> lookup(final UsbDeviceDescriptor descriptor) {
-        final var vendor = knownUsbVendors.get(descriptor.getVendorId());
+    private Optional<VendorDeviceDescriptor> lookup(final String vendorId, final String productId) {
+        final var vendor = knownUsbVendors.get(vendorId);
         if (vendor == null) {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(vendor.getDevices().get(descriptor.getProductId()));
+        return Optional.ofNullable(vendor.getDevices().get(productId));
     }
 
 
@@ -125,11 +196,6 @@ public class LinuxUsbScanner implements UsbScanner {
 
         return List.of();
 
-    }
-
-    private LinuxUsbScanner(final UsbConfiguration config, final Map<String, VendorDescriptor> knownUsbVendors) {
-        this.config = config;
-        this.knownUsbVendors = knownUsbVendors;
     }
 
     /**
@@ -183,4 +249,13 @@ public class LinuxUsbScanner implements UsbScanner {
         return (LinuxUsbDeviceDescriptor)builder.build();
     }
 
+    @Override
+    public Logger getLogger() {
+        return logger;
+    }
+
+    @Override
+    public Object getUUID() {
+        return "usb-scanner";
+    }
 }

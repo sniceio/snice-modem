@@ -49,6 +49,7 @@ public class ProcessTail implements Tail {
         synchronized (lock) {
             try {
                 final var builder = new ProcessBuilder();
+                System.err.println("Executing cmd: " + cmd);
                 builder.command("/bin/sh", "-c", cmd);
                 process = builder.start();
                 final var output = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -57,6 +58,10 @@ public class ProcessTail implements Tail {
                 isRunning.set(true);
                 threadPool.submit(new StreamReader(output, onNewLine, regexp));
                 threadPool.submit(new StreamReader(error, onError, null));
+                process.onExit().whenComplete((p, t) -> {
+                    isRunning.set(false);
+                    exitStage.complete(null);
+                });
 
             } catch (final Throwable t) {
                 isRunning.set(false);

@@ -26,10 +26,18 @@ public class LinuxUsbDmesgMonitor implements Actor, LoggingSupport {
 
     private Process dmesg;
 
+    // TODO: should come from configuration.
+    // TODO: need to document how this works so it makes sense.
+    private static final String USB_DEVICE_CONNECTED = "New USB device found, idVendor";
+    // private final static Pattern DMESG_SYSFS_PATTERN = Pattern.compile("\\[.*\\] usb (\\d-\\d[\\.\\d]*): .*");
+
+    private static final String USB_DEVICE_DISCONNECT = "USB disconnect, device number";
+
     public static Props props(final ExecutorService threadPool, final UsbConfiguration config, final LinuxUsbScanner scanner) {
         assertNotNull(threadPool, "The thread pool used for blocking IO operations cannot be null");
         assertNotNull(config, "The Configuration cannot be null");
         assertNotNull(scanner, "The Linux USB Scanner cannot be null");
+
         return Props.forActor(LinuxUsbDmesgMonitor.class, () -> new LinuxUsbDmesgMonitor(threadPool, config, scanner));
     }
 
@@ -41,8 +49,14 @@ public class LinuxUsbDmesgMonitor implements Actor, LoggingSupport {
 
     @Override
     public void onReceive(final Object msg) {
-        System.err.println("Got a messsage: " + msg);
+        final var str = msg.toString();
+        if (str.contains(USB_DEVICE_CONNECTED)) {
+            scanner.processDmesgNewDevice(str);
+        } else if (str.contains(USB_DEVICE_DISCONNECT)) {
+
+        }
     }
+
 
     @Override
     public void start() {

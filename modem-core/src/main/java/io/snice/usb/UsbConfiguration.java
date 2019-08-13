@@ -99,7 +99,6 @@ public class UsbConfiguration {
         private final static String DEFAULT_LSUSB_CMD = "lsusb -d %s:%s";
 
 
-        // private final String scanCommand = "find -L /sys/bus/usb/devices -maxdepth 2 -name \"tty*\"";
         private String devicesFolder = "/sys/bus/usb/devices";
         private List<String> whiteList;
 
@@ -140,7 +139,7 @@ public class UsbConfiguration {
 
         @JsonProperty("findSysfsCmd")
         public Builder withFindSysfsCmd(final String cmd) {
-            assertNotEmpty(cmd, "The command to use to find the device no of the USB device cannot be mepty");
+            assertNotEmpty(cmd, "The command to use to find the device no of the USB device cannot be empty");
             this.findSysfsCmd = cmd;
             return this;
         }

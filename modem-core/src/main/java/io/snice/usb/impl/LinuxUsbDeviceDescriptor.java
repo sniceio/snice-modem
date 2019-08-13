@@ -61,12 +61,12 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
 
     @Override
     public String toString() {
-        return String.format("USB Device %s:%s %s", vendorId, productId, vendorDescription.orElse("N/A"));
+        return String.format("USB Device %s:%s %s. Interface count %d", vendorId, productId, vendorDescription.orElse("N/A"), ifs.size());
     }
 
     public LinuxBuilder copy() {
         final var builder = new Builder(vendorId, productId);
-        builder.withVendorDescription(vendorDescription.orElse(""));
+        builder.withVendorDescription(vendorDescription.orElse(null));
         builder.withBusNo(busNo);
         builder.withDeviceNo(deviceNo);
         builder.withUsbInterfaces(ifs);
@@ -120,7 +120,7 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
 
         @Override
         public LinuxUsbDeviceDescriptor build() {
-            final Optional<String> desc = description == null || description.isEmpty() ? Optional.empty() : Optional.of(description);
+            final Optional<String> desc = description == null || description.trim().isEmpty() ? Optional.empty() : Optional.of(description);
             return new LinuxUsbDeviceDescriptor(busNo, deviceNo, vendorId, productId, desc, ifs);
         }
     }
