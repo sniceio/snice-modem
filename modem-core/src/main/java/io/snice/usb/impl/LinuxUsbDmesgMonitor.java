@@ -4,6 +4,7 @@ import io.hektor.actors.LoggingSupport;
 import io.hektor.core.Actor;
 import io.hektor.core.Props;
 import io.snice.processes.Tail;
+import io.snice.usb.UsbAlertCode;
 import io.snice.usb.UsbConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,12 +50,32 @@ public class LinuxUsbDmesgMonitor implements Actor, LoggingSupport {
 
     @Override
     public void onReceive(final Object msg) {
+        /*
         final var str = msg.toString();
         if (str.contains(USB_DEVICE_CONNECTED)) {
-            scanner.processDmesgNewDevice(str);
+            processNewDevices(str);
         } else if (str.contains(USB_DEVICE_DISCONNECT)) {
-
+            System.out.println(str);
         }
+        */
+    }
+
+    private final void processDeviceDisconnect(final String dmesg) {
+
+    }
+
+    private final void processNewDevices(final String dmesg) {
+        /*
+        try {
+            final var devices = scanner.processDmesgNewDevice(dmesg);
+            for (final var dev : devices) {
+                System.err.println("New device: " + dev + " on bus: " + dev.getBusNo() + " device no: " + dev.getDeviceNo());
+           }
+
+        } catch (final UnableToParseDmesgException e) {
+            logWarn(UsbAlertCode.UNABLE_TO_PARSE_DMESG_NEW_USB_DEVICE, e.getDmesgLine(), e.getPattern().pattern());
+        }
+        */
     }
 
 
@@ -66,7 +87,7 @@ public class LinuxUsbDmesgMonitor implements Actor, LoggingSupport {
                 .withThreadPool(threadPool)
                 .onNewLine(self::tell)
                 .onError(System.err::println)
-                .withFilter(".*New USB device found, idVendor.*|.*USB disconnect, device number.*")
+                .withFilter(config.getDmesgUsbDeviceAttachedPattern().pattern() + "|" + config.getDmesgUsbDeviceDetachedPattern().pattern())
                 .build();
         tail.start();
     }

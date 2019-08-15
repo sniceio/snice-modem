@@ -1,4 +1,4 @@
-package io.snice.usb;
+package io.snice.usb.linux;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -15,8 +15,8 @@ import java.util.regex.Pattern;
 
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 
-@JsonDeserialize(builder = UsbConfiguration.Builder.class)
-public class UsbConfiguration {
+@JsonDeserialize(builder = LibUsbConfiguration.Builder.class)
+public class LibUsbConfiguration {
 
     private final Path devicesFolder;
 
@@ -45,7 +45,7 @@ public class UsbConfiguration {
         return new Builder();
     }
 
-    private UsbConfiguration(final Path devicesFolder, final String findSysfsRootCmd, final String findDeviceNoCmd, final Map<String, List<String>> whiteList) {
+    private LibUsbConfiguration(final Path devicesFolder, final String findSysfsRootCmd, final String findDeviceNoCmd, final Map<String, List<String>> whiteList) {
         this.devicesFolder = devicesFolder;
         this.findSysfsRoot = findSysfsRootCmd;
         this.whiteList = whiteList;
@@ -53,27 +53,6 @@ public class UsbConfiguration {
 
         dmesgUsbDeviceAttached = Pattern.compile(USB_DEVICE_CONNECTED);
         dmesgUsbDeviceDetached = Pattern.compile(USB_DEVICE_DISCONNECTED);
-    }
-
-    /**
-     * We are tailing dmesg and are looking for lines that indicates that a new USB device was found.
-     * We are basing these decisions on regular expressions and if a match, we'll parse out the
-     * necessary information.
-     */
-    public Pattern getDmesgUsbDeviceAttachedPattern() {
-        return dmesgUsbDeviceAttached;
-    }
-
-    public Pattern getDmesgUsbDeviceDetachedPattern() {
-        return dmesgUsbDeviceDetached;
-    }
-
-    public String getFindDeviceNoCmd() {
-        return findDeviceNo;
-    }
-
-    public String getFindSysfsRoot() {
-        return findSysfsRoot;
     }
 
     /**
@@ -166,9 +145,9 @@ public class UsbConfiguration {
             return this;
         }
 
-        public UsbConfiguration build() {
+        public LibUsbConfiguration build() {
             final Path path = Paths.get(devicesFolder);
-            return new UsbConfiguration(path, findSysfsCmd, findDeviceCmd, ensureWhiteList());
+            return new LibUsbConfiguration(path, findSysfsCmd, findDeviceCmd, ensureWhiteList());
         }
 
         private Map<String, List<String>> ensureWhiteList() {

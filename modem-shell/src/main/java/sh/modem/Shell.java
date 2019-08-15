@@ -8,38 +8,33 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.hektor.config.HektorConfiguration;
+import io.hektor.core.ActorRef;
 import io.hektor.core.Hektor;
 import io.hektor.core.Props;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
+import io.snice.processes.Tail;
 import io.snice.usb.ActorUsbManagerContext;
 import io.snice.usb.FsmActor;
 import io.snice.usb.OnStartFunction;
 import io.snice.usb.UsbConfiguration;
-import io.snice.usb.UsbScanner;
 import io.snice.usb.fsm.UsbManagerContext;
 import io.snice.usb.fsm.UsbManagerData;
 import io.snice.usb.fsm.UsbManagerFsm;
-import io.snice.usb.impl.DefaultUsbEvent;
-import io.snice.usb.impl.JavaxUsbDeviceWrapper;
-import io.snice.usb.impl.LinuxUsbDmesgMonitor;
 import io.snice.usb.impl.LinuxUsbScanner;
-import io.snice.usb.impl.UsbIdLoader;
+import io.snice.usb.linux.UsbIdLoader;
 
 import javax.usb.UsbDevice;
 import javax.usb.UsbDeviceDescriptor;
 import javax.usb.UsbException;
-import javax.usb.UsbHostManager;
 import javax.usb.UsbHub;
-import javax.usb.UsbServices;
-import javax.usb.event.UsbServicesEvent;
-import javax.usb.event.UsbServicesListener;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 
 public class Shell {
 
@@ -86,14 +81,24 @@ public class Shell {
         final var knownUsbVendors = UsbIdLoader.load();
         final var scanner = LinuxUsbScanner.of(usbConfiguration, knownUsbVendors);
 
-        final ActorUsbManagerContext usbManagerCtx = new ActorUsbManagerContext(scanner, usbConfiguration, knownUsbVendors);
+        final Function<ActorRef, UsbManagerContext> usbManagerCtx
+                = (ref) ->  new ActorUsbManagerContext(ref, scanner, usbConfiguration, knownUsbVendors);
 
         final UsbManagerData usbManagerData = new UsbManagerData();
 
         final OnStartFunction<UsbManagerContext, UsbManagerData> onStart = (actorCtx, ctx, data) -> {
             System.err.println("I guess the FSM is starting. This is pretty cool actually");
-            var props = LinuxUsbDmesgMonitor.props(blockingIoPool, usbConfiguration, scanner);
-            var usbMonitor = actorCtx.actorOf("monitor", props);
+            // var props = LinuxUsbDmesgMonitor.props(blockingIoPool, usbConfiguration, scanner);
+            // var usbMonitor = actorCtx.actorOf("monitor", props);
+            final var self = actorCtx.self();
+            final var config = ctx.getConfig();
+            final var tail = Tail.tailProcess("dmesg --follow")
+                    .withThreadPool(blockingIoPool)
+                    .onNewLine(self::tell)
+                    .onError(System.err::println)
+                    .withFilter(config.getDmesgUsbDeviceAttachedPattern().pattern() + "|" + config.getDmesgUsbDeviceDetachedPattern().pattern())
+                    .build();
+            tail.start();
         };
 
         return FsmActor.of(UsbManagerFsm.definition)

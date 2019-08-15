@@ -2,6 +2,7 @@ package io.snice.usb.impl;
 
 import io.snice.usb.VendorDescriptor;
 import io.snice.usb.VendorDeviceDescriptor;
+import io.snice.usb.linux.UsbIdLoader;
 import org.junit.Test;
 
 import java.util.Map;

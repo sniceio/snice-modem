@@ -4,6 +4,11 @@ import io.snice.usb.UsbConfiguration;
 import io.snice.usb.UsbDevice;
 import io.snice.usb.UsbDeviceDescriptor;
 import io.snice.usb.UsbScanner;
+import org.usb4java.Device;
+import org.usb4java.DeviceDescriptor;
+import org.usb4java.DeviceList;
+import org.usb4java.LibUsb;
+import org.usb4java.LibUsbException;
 
 import javax.usb.UsbEndpoint;
 import javax.usb.UsbException;
@@ -56,6 +61,37 @@ public class LibUsbScanner implements UsbScanner {
         return null;
     }
 
+    public Device findDevice(final String vendorId, final String productId)
+    {
+        // Read the USB device list
+        final DeviceList list = new DeviceList();
+        int result = LibUsb.getDeviceList(null, list);
+        if (result < 0) throw new LibUsbException("Unable to get device list", result);
+
+        try
+        {
+            // Iterate over all devices and scan for the right one
+            for (final Device device: list)
+            {
+                final DeviceDescriptor descriptor = new DeviceDescriptor();
+                result = LibUsb.getDeviceDescriptor(device, descriptor);
+                if (result != LibUsb.SUCCESS) throw new LibUsbException("Unable to read device descriptor", result);
+
+                final String vendorIdStr = String.format("%04x", descriptor.idVendor() & '\uffff');
+                final String productIdStr = String.format("%04x", descriptor.idProduct() & '\uffff');
+                if (vendorId.equals(vendorIdStr) && productId.equals(productIdStr)) {
+                    return device;
+                }
+            }
+        } finally {
+            // Ensure the allocated device list is freed
+            LibUsb.freeDeviceList(list, true);
+        }
+
+        // Device not found
+        return null;
+    }
+
     /**
      * Dumps the specified USB device to stdout.
      *
@@ -66,14 +102,15 @@ public class LibUsbScanner implements UsbScanner {
 
         final short sierra = 1199;
         // System.err.println((device.getUsbDeviceDescriptor().idVendor()));
+        // LibUsb.getPortNumber(device);
 
         final short vendorId = device.getUsbDeviceDescriptor().idVendor();
         final short productId = device.getUsbDeviceDescriptor().idProduct();
         final String vendorIdStr = String.format("%04x", vendorId & '\uffff');
         final String productIdStr = String.format("%04x", productId & '\uffff');
 
-        // if ("1199".equals(vendorIdStr) || "05c6".equals(vendorIdStr) || "2c7c".equals(vendorIdStr)) {
-        if (true || "1199".equals(vendorIdStr)) {
+        if ("1199".equals(vendorIdStr) || "05c6".equals(vendorIdStr) || "2c7c".equals(vendorIdStr)) {
+            // if (true || "1199".equals(vendorIdStr)) {
             System.out.println("The device: " + device);
             final UsbPort port = device.getParentUsbPort();
             if (port != null) {
@@ -92,12 +129,12 @@ public class LibUsbScanner implements UsbScanner {
                 for (final UsbInterface iface : (List<UsbInterface>) configuration.getUsbInterfaces()) {
                     // iface.
                     // Dump the interface descriptor
-                    // System.out.println(iface.getUsbInterfaceDescriptor());
+                    System.out.println(iface.getUsbInterfaceDescriptor());
 
                     // Process all endpoints
                     for (final UsbEndpoint endpoint : (List<UsbEndpoint>) iface.getUsbEndpoints()) {
                         // Dump the endpoint descriptor
-                        // System.out.println(endpoint.getUsbEndpointDescriptor());
+                        System.out.println(endpoint.getUsbEndpointDescriptor());
                     }
                 }
             }

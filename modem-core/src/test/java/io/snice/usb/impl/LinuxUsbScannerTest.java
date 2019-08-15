@@ -3,6 +3,7 @@ package io.snice.usb.impl;
 import io.snice.usb.UsbConfiguration;
 import io.snice.usb.UsbTestBase;
 import io.snice.usb.VendorDescriptor;
+import io.snice.usb.linux.UsbIdLoader;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,6 +45,13 @@ public class LinuxUsbScannerTest extends UsbTestBase {
     public void testScan() throws Exception {
         scanner.scan();
     }
+
+    @Test
+    public void testParseDmesgDisconnectMessage() {
+        final var dmesg = "[420607.709631] usb 1-3: USB disconnect, device number 33";
+        // scanner.apa(dmesg);
+    }
+
 
     @Test
     public void apa() throws Exception {

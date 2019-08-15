@@ -1,4 +1,4 @@
-package io.snice.usb.fsm;
+package io.snice.usb.linux;
 
 import io.hektor.fsm.Context;
 import io.snice.usb.UsbConfiguration;
@@ -7,7 +7,7 @@ import io.snice.usb.impl.LinuxUsbDevice;
 import io.snice.usb.impl.LinuxUsbDeviceEvent;
 import io.snice.usb.impl.LinuxUsbScanner;
 
-public interface UsbManagerContext extends Context {
+public interface LibUsbManagerContext extends Context {
 
     UsbConfiguration getConfig();
 

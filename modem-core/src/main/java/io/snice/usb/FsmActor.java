@@ -2,6 +2,7 @@ package io.snice.usb;
 
 import io.hektor.actors.LoggingSupport;
 import io.hektor.core.Actor;
+import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
 import io.hektor.fsm.Context;
 import io.hektor.fsm.Data;
@@ -11,6 +12,7 @@ import io.snice.modem.actors.FirmwareAlertCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
@@ -29,7 +31,7 @@ public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data
 
     private FSM<S, C, D> fsm;
 
-    private Supplier<C> contextSupplier;
+    private Function<ActorRef, C> contextSupplier;
     private Supplier<D> dataSupplier;
 
     private C context;
@@ -45,7 +47,7 @@ public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data
     }
 
     private FsmActor(final Definition<S, C, D> definition,
-                     final Supplier<C> context,
+                     final Function<ActorRef, C> context,
                      final Supplier<D> data,
                      final OnStartFunction<C, D> onStart,
                      final OnStopFunction<C, D> onStop) {
@@ -60,7 +62,7 @@ public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data
     public void start() {
         logInfo("Starting");
         // TODO: if these throw exception, we need to deal with and kill the actor.
-        context = contextSupplier.get();
+        context = contextSupplier.apply(self());
         data = dataSupplier.get();
         onStart.start(ctx(), context, data);
 
@@ -119,7 +121,7 @@ public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data
 
         private final Definition<S, C, D> definition;
 
-        private Supplier<C> context;
+        private Function<ActorRef, C> context;
         private Supplier<D> data;
 
         private OnStartFunction<C, D> onStart;
@@ -131,15 +133,22 @@ public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data
 
         public Builder withContext(final C context) {
             assertNotNull(context, "The context cannot be null");
-            this.context = () -> context;
+            this.context = (ref) -> context;
             return this;
         }
 
         public Builder withContext(final Supplier<C> context) {
             assertNotNull(context, "The context supplier cannot be null");
+            this.context = (ref) -> context.get();
+            return this;
+        }
+
+        public Builder withContext(final Function<ActorRef, C> context) {
+            assertNotNull(context, "The context function cannot be null");
             this.context = context;
             return this;
         }
+
 
         public Builder withData(final D data) {
             assertNotNull(context, "The data cannot be null");

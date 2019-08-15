@@ -1,4 +1,4 @@
-package io.snice.usb.impl;
+package io.snice.usb.linux;
 
 import io.snice.usb.VendorDescriptor;
 import io.snice.usb.VendorDeviceDescriptor;

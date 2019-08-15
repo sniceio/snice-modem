@@ -1,8 +1,11 @@
-package io.snice.usb.fsm;
+package io.snice.usb.linux;
 
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
 import io.snice.usb.UsbManagementEvent.TerminateEvent;
+import io.snice.usb.fsm.UsbManagerContext;
+import io.snice.usb.fsm.UsbManagerData;
+import io.snice.usb.fsm.UsbManagerState;
 import io.snice.usb.impl.LinuxUsbDeviceAttachEvent;
 import io.snice.usb.impl.LinuxUsbDeviceDetachEvent;
 
@@ -12,7 +15,7 @@ import static io.snice.usb.fsm.UsbManagerState.DMESG;
 import static io.snice.usb.fsm.UsbManagerState.IDLE;
 import static io.snice.usb.fsm.UsbManagerState.TERMINATED;
 
-public class UsbManagerFsm {
+public class LibUsbManagerFsm {
 
     public static final Definition<UsbManagerState, UsbManagerContext, UsbManagerData> definition;
 
@@ -27,10 +30,10 @@ public class UsbManagerFsm {
         final var detach = builder.withTransientState(DETACH);
         final var terminated = builder.withFinalState(TERMINATED);
 
-        idle.transitionTo(DMESG).onEvent(String.class).withAction(UsbManagerFsm::processDmesg);
+        idle.transitionTo(DMESG).onEvent(String.class).withAction(LibUsbManagerFsm::processDmesg);
         dmesg.transitionTo(IDLE).asDefaultTransition();
 
-        idle.transitionTo(ATTACH).onEvent(LinuxUsbDeviceAttachEvent.class).withAction(UsbManagerFsm::onAttach).withGuard(UsbManagerFsm::processEvent);
+        idle.transitionTo(ATTACH).onEvent(LinuxUsbDeviceAttachEvent.class).withAction(LibUsbManagerFsm::onAttach).withGuard(LibUsbManagerFsm::processEvent);
         idle.transitionTo(IDLE).onEvent(LinuxUsbDeviceAttachEvent.class).withAction(evt -> System.err.println("Ignoring device"));
 
         idle.transitionTo(DETACH).onEvent(LinuxUsbDeviceDetachEvent.class).consume();

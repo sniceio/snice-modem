@@ -19,14 +19,24 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
 public class LinuxUsbDevice implements UsbDevice {
 
     private final LinuxUsbDeviceDescriptor descriptor;
+    private final String sysfs;
 
     public static Builder of(final LinuxUsbDeviceDescriptor descriptor) {
         assertNotNull(descriptor, "The USB device descriptor cannot be null");
         return new Builder(descriptor);
     }
 
-    private LinuxUsbDevice(final LinuxUsbDeviceDescriptor descriptor) {
+    private LinuxUsbDevice(final String sysfs, final LinuxUsbDeviceDescriptor descriptor) {
+        this.sysfs = sysfs;
         this.descriptor = descriptor;
+    }
+
+    public int getBusNo() {
+        return descriptor.getBusNo();
+    }
+
+    public int getDeviceNo() {
+        return descriptor.getDeviceNo();
     }
 
     @Override
@@ -56,7 +66,7 @@ public class LinuxUsbDevice implements UsbDevice {
 
     @Override
     public String toString() {
-        return descriptor.toString();
+        return String.format("USB Device %s:%s %s (sysfs: %s).", getVendorId(), getProductId(), getVendorDescription().orElse(""), sysfs);
     }
 
     public static class Builder {
@@ -83,7 +93,7 @@ public class LinuxUsbDevice implements UsbDevice {
             final var sysfs = ensureDevicePath(sysfsDevicesPath, devicePath);
             final var ifs = buildInterfaces(descriptor, sysfs, devicePath);
             final var enhancedDescriptor = (LinuxUsbDeviceDescriptor)descriptor.copy().withUsbInterfaces(ifs).build();
-            return new LinuxUsbDevice(enhancedDescriptor);
+            return new LinuxUsbDevice(sysfs.getFileName().toString(), enhancedDescriptor);
         }
 
         private static Path ensureDevicePath(final Path sysfsPath, final String devicePath) {

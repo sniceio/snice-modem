@@ -2,10 +2,12 @@ package io.snice.usb;
 
 import io.hektor.core.Actor;
 import io.hektor.core.ActorContext;
+import io.hektor.core.ActorRef;
 import io.snice.usb.fsm.UsbManagerContext;
 import io.snice.usb.fsm.UsbManagerData;
 import io.snice.usb.fsm.UsbManagerFsm;
 import io.snice.usb.fsm.UsbManagerState;
+import io.snice.usb.impl.LinuxUsbScanner;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -16,7 +18,7 @@ public class UsbManagerActorTest extends UsbTestBase {
 
     private UsbManagerContext usbManagerContext;
     private UsbManagerData data;
-    private UsbScanner scanner;
+    private LinuxUsbScanner scanner;
 
     private OnStartFunction<UsbManagerContext, UsbManagerData> onStart;
     private OnStopFunction<UsbManagerContext, UsbManagerData> onStop;
@@ -28,9 +30,10 @@ public class UsbManagerActorTest extends UsbTestBase {
     public void setup() throws Exception {
         super.setup();;
         data = new UsbManagerData();
-        scanner = mock(UsbScanner.class);
+        scanner = mock(LinuxUsbScanner.class);
+        var ref = mock(ActorRef.class);
 
-        usbManagerContext = new ActorUsbManagerContext(scanner, config, knownUsbVendors);
+        usbManagerContext = new ActorUsbManagerContext(ref, scanner, config, knownUsbVendors);
 
         onStart = mock(OnStartFunction.class);
         onStop = mock(OnStopFunction.class);

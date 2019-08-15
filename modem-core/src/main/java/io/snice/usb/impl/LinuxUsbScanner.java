@@ -3,7 +3,6 @@ package io.snice.usb.impl;
 import io.hektor.actors.LoggingSupport;
 import io.snice.processes.Processes;
 import io.snice.usb.NoSuchUsbDevice;
-import io.snice.usb.UsbAlertCode;
 import io.snice.usb.UsbConfiguration;
 import io.snice.usb.UsbDevice;
 import io.snice.usb.UsbDeviceDescriptor;
@@ -27,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -45,10 +45,13 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
     // TODO: needs to be configured.
     private static final String USB_DEVICE_CONNECTED_REGEXP = "\\[.*\\] usb (\\d-\\d[\\.\\d]*): *New USB device found, idVendor=([a-f,A-F,0-9]+), idProduct=([a-f,A-F,0-9]+).*";
 
+    private static final String USB_DEVICE_DISCONNECTED_REGEXP = "\\[.*\\] usb (\\d-\\d[\\.\\d]*):.*device number.*(\\d+).*";
+
     // TODO: needs to be configured
     private static final String LSUSB_CMD = "lsusb -d %s:%s";
 
     private final Pattern dmesgNewDevicePattern;
+    private final Pattern dmesgDisconnectPattern;
 
     private final UsbConfiguration config;
     private final ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -60,40 +63,74 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
 
         // TODO: get from config file
         final var pattern = Pattern.compile(USB_DEVICE_CONNECTED_REGEXP);
-        return new LinuxUsbScanner(config, knownUsbVendors == null ? Collections.emptyMap() : knownUsbVendors, pattern);
+        final var disconnectPattern = Pattern.compile(USB_DEVICE_DISCONNECTED_REGEXP);
+        return new LinuxUsbScanner(config, knownUsbVendors == null ? Collections.emptyMap() : knownUsbVendors, pattern, disconnectPattern);
     }
 
     public static LinuxUsbScanner of(final UsbConfiguration config) {
         return of(config, null);
     }
 
-    private LinuxUsbScanner(final UsbConfiguration config, final Map<String, VendorDescriptor> knownUsbVendors, final Pattern dmesgNewDevicePattern) {
+    private LinuxUsbScanner(final UsbConfiguration config, final Map<String, VendorDescriptor> knownUsbVendors,
+                            final Pattern dmesgNewDevicePattern,
+                            final Pattern dmesgDisconnectPattern) {
         this.config = config;
         this.knownUsbVendors = knownUsbVendors;
         this.dmesgNewDevicePattern = dmesgNewDevicePattern;
+        this.dmesgDisconnectPattern = dmesgDisconnectPattern;
     }
 
-    /**
-     * Unique to Linux. The {@link LinuxUsbDmesgMonitor} is "tailing" dmesg and whenever it detects a
-     * "New USB device connected" message, it'll call this method to setup the new {@link LinuxUsbDevice}
-     *
-     * @param dmesg
-     * @return
-     */
-    public List<LinuxUsbDevice> processDmesgNewDevice(final String dmesg) {
-        final var matcher = dmesgNewDevicePattern.matcher(dmesg);
-        if (!matcher.matches() || matcher.groupCount() != 3) {
-            // TODO: this should throw exception
-            logWarn(UsbAlertCode.UNABLE_TO_PARSE_DMESG_NEW_USB_DEVICE, dmesg, dmesgNewDevicePattern.pattern());
-            return List.of();
+    public Optional<LinuxUsbDeviceEvent> parseDmesg(final String dmesg) {
+        final var attachMatcher = config.getDmesgUsbDeviceAttachedPattern().matcher(dmesg);
+        if (attachMatcher.matches()) {
+            return parseAttachMessage(attachMatcher, dmesg);
+        }
+
+        final var detachMatcher = config.getDmesgUsbDeviceDetachedPattern().matcher(dmesg);
+        if (detachMatcher.matches()) {
+            return parseDetachMessage(detachMatcher, dmesg);
+        }
+
+        throw new UnableToParseDmesgException(dmesg, config.getDmesgUsbDeviceAttachedPattern());
+    }
+
+    private Optional<LinuxUsbDeviceEvent> parseDetachMessage(final Matcher matcher, String dmesg) {
+        if (matcher.groupCount() != 2) {
+            throw new UnableToParseDmesgException(dmesg, matcher.pattern());
+        }
+
+        final var sysfs = matcher.group(1);
+        final var deviceNo = Integer.parseInt(matcher.group(2));
+        return Optional.of(LinuxUsbDeviceDetachEvent.of(deviceNo).withSysfs(sysfs));
+    }
+
+    private Optional<LinuxUsbDeviceEvent> parseAttachMessage(final Matcher matcher, String dmesg) {
+        if (matcher.groupCount() != 3) {
+            throw new UnableToParseDmesgException(dmesg, matcher.pattern());
         }
 
         final var sysfs = matcher.group(1);
         final var vendorId = matcher.group(2);
         final var productId = matcher.group(3);
+        return Optional.of(LinuxUsbDeviceAttachEvent.of(vendorId).withProductId(productId).withSysfs(sysfs));
+    }
+
+
+    /**
+     * Unique to Linux. The {@link LinuxUsbDmesgMonitor} is "tailing" dmesg and whenever it detects a
+     * "New USB device connected" message, it'll call this method to setup the new {@link LinuxUsbDevice}
+     */
+    public List<LinuxUsbDevice> processDmesgNewDevice(final LinuxUsbDeviceAttachEvent evt) {
+        var vendorId = evt.getVendorId();
+        var productId = evt.getProductId();
+        var sysfs = evt.getSysfs();
+
+        if (!config.processDevice(vendorId, productId)) {
+            logger.info("Skipping new USB device " + vendorId + ":" + productId + " attached to sysfs " + sysfs);
+            return List.of();
+        }
 
         if (isRootHub(vendorId, productId)) {
-            System.err.println("Skipping root hub " + dmesg);
             return List.of();
         }
 
@@ -103,7 +140,6 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
                     .map(LinuxUsbScanner::mapToDeviceDescriptor)
                     .map(desc -> LinuxUsbDevice.of(desc).withDevicePath(sysfs).withLinuxSysfsDevicesPath(config.getDevicesFolder()).build())
                     .collect(Collectors.toList());
-            System.out.println(usbDevices);
             return usbDevices;
         } catch (final TimeoutException e) {
             e.printStackTrace();
@@ -111,7 +147,6 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
             e.printStackTrace();
         }
         return List.of();
-
     }
 
     @Override

@@ -39,6 +39,14 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
 
     }
 
+    public int getBusNo() {
+        return Integer.parseInt(busNo);
+    }
+
+    public int getDeviceNo() {
+        return Integer.parseInt(deviceNo);
+    }
+
     @Override
     public String getVendorId() {
         return vendorId;

@@ -1,6 +1,6 @@
 package io.snice.usb;
 
-import io.snice.usb.impl.UsbIdLoader;
+import io.snice.usb.linux.UsbIdLoader;
 import org.junit.Before;
 
 import java.net.URISyntaxException;
