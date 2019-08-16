@@ -16,9 +16,14 @@ public class LinuxLibUsbScannerTest extends UsbTestBase {
 
     @Test
     public void testScan() {
-        var config = LibUsbConfiguration.of().build();
-        var scanner = LinuxLibUsbScanner.of(config, knownUsbVendors);
-        scanner.scan();
+        final var config = LibUsbConfiguration.of().build();
+        final var scanner = LinuxLibUsbScanner.of(config, knownUsbVendors);
+        // final var devices = scanner.scan("2c7c"::equals);
+        final var devices = scanner.scan();
+        devices.forEach(System.out::println);
+
+        final var quectel = scanner.find(devices.get(0)).orElseThrow(RuntimeException::new);
+
     }
 
 

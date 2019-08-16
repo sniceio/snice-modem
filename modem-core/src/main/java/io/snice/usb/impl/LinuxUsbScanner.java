@@ -10,7 +10,7 @@ import io.snice.usb.UsbException;
 import io.snice.usb.UsbScanner;
 import io.snice.usb.VendorDescriptor;
 import io.snice.usb.VendorDeviceDescriptor;
-import io.snice.usb.impl.LinuxUsbDeviceDescriptor.LinuxBuilder;
+import io.snice.usb.impl.LinuxUsbDeviceDescriptorOld.LinuxBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +26,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -94,7 +96,7 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
         throw new UnableToParseDmesgException(dmesg, config.getDmesgUsbDeviceAttachedPattern());
     }
 
-    private Optional<LinuxUsbDeviceEvent> parseDetachMessage(final Matcher matcher, String dmesg) {
+    private Optional<LinuxUsbDeviceEvent> parseDetachMessage(final Matcher matcher, final String dmesg) {
         if (matcher.groupCount() != 2) {
             throw new UnableToParseDmesgException(dmesg, matcher.pattern());
         }
@@ -104,7 +106,7 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
         return Optional.of(LinuxUsbDeviceDetachEvent.of(deviceNo).withSysfs(sysfs));
     }
 
-    private Optional<LinuxUsbDeviceEvent> parseAttachMessage(final Matcher matcher, String dmesg) {
+    private Optional<LinuxUsbDeviceEvent> parseAttachMessage(final Matcher matcher, final String dmesg) {
         if (matcher.groupCount() != 3) {
             throw new UnableToParseDmesgException(dmesg, matcher.pattern());
         }
@@ -121,9 +123,9 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
      * "New USB device connected" message, it'll call this method to setup the new {@link LinuxUsbDevice}
      */
     public List<LinuxUsbDevice> processDmesgNewDevice(final LinuxUsbDeviceAttachEvent evt) {
-        var vendorId = evt.getVendorId();
-        var productId = evt.getProductId();
-        var sysfs = evt.getSysfs();
+        final var vendorId = evt.getVendorId();
+        final var productId = evt.getProductId();
+        final var sysfs = evt.getSysfs();
 
         if (!config.processDevice(vendorId, productId)) {
             logger.info("Skipping new USB device " + vendorId + ":" + productId + " attached to sysfs " + sysfs);
@@ -150,15 +152,9 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
     }
 
     @Override
-    public List<UsbDevice> find(final String vendorId, final String productId) throws UsbException {
-        final var device = find(LinuxUsbDeviceDescriptor.ofVendorId(vendorId).withProductId(productId).build());
-        return device.isPresent() ? List.of(device.get()) : List.of();
-    }
-
-    @Override
     public Optional<UsbDevice> find(final UsbDeviceDescriptor descriptor) throws UsbException {
 
-        final var linuxDescriptor = (LinuxUsbDeviceDescriptor)descriptor;
+        final var linuxDescriptor = (LinuxUsbDeviceDescriptorOld)descriptor;
 
         if (isRootHub(descriptor)) {
             return Optional.empty();
@@ -248,20 +244,34 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
      * @throws InterruptedException
      */
     @Override
-    public List<UsbDevice> scan() throws IOException, ExecutionException, InterruptedException {
-        final var builder = new ProcessBuilder();
-        builder.command("lsusb");
-        final var process = builder.start();
-        process.onExit().get();
+    public List<UsbDeviceDescriptor> scan() throws UsbException {
+        try {
+            final var builder = new ProcessBuilder();
+            builder.command("lsusb");
+            final var process = builder.start();
+            process.onExit().get();
 
-        final var descriptors = new BufferedReader(new InputStreamReader(process.getInputStream())).lines()
-                .map(LinuxUsbScanner::mapToDeviceDescriptor)
-                .map(this::find)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
+            final var descriptors = new BufferedReader(new InputStreamReader(process.getInputStream())).lines()
+                    .map(LinuxUsbScanner::mapToDeviceDescriptor)
+                    .map(this::find)
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .collect(Collectors.toList());
 
-        return descriptors;
+            return null;
+        } catch (final Exception e) {
+            throw new UsbException(e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public List<UsbDeviceDescriptor> scan(final Predicate<String> vendorFilter) throws UsbException {
+        return null;
+    }
+
+    @Override
+    public List<UsbDeviceDescriptor> scan(final BiPredicate<String, String> vendorProductFilter) throws UsbException {
+        return null;
     }
 
     /**
@@ -270,7 +280,7 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
      * @param str
      * @return
      */
-    private static LinuxUsbDeviceDescriptor mapToDeviceDescriptor(final String str) {
+    private static LinuxUsbDeviceDescriptorOld mapToDeviceDescriptor(final String str) {
         final var pattern = Pattern.compile("Bus (\\d{3}) Device (\\d{3}): ID\\s+([a-f,A-F,0-9]+):([a-f,A-F,0-9]+)\\s(.*)");
         final var matcher = pattern.matcher(str);
         if (!matcher.matches() || matcher.groupCount() != 5) {
@@ -278,10 +288,10 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
         }
 
         final var builder = (LinuxBuilder)UsbDeviceDescriptor.ofVendorId(matcher.group(3)).withProductId(matcher.group(4));
-        builder.withVendorDescription(matcher.group(5));
+        builder.withDescription(matcher.group(5));
         builder.withBusNo(matcher.group(1));
         builder.withDeviceNo(matcher.group(2));
-        return (LinuxUsbDeviceDescriptor)builder.build();
+        return (LinuxUsbDeviceDescriptorOld)builder.build();
     }
 
     @Override

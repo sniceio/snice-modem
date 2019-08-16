@@ -6,19 +6,26 @@ import io.snice.usb.UsbException;
 import io.snice.usb.UsbScanner;
 import io.snice.usb.VendorDescriptor;
 import io.snice.usb.VendorDeviceDescriptor;
-import io.snice.usb.impl.LinuxUsbDeviceAttachEvent;
+import io.snice.usb.impl.LinuxUsbInterfaceDescriptor;
+import org.usb4java.ConfigDescriptor;
 import org.usb4java.Context;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceList;
+import org.usb4java.InterfaceDescriptor;
 import org.usb4java.LibUsb;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -67,17 +74,26 @@ public class LinuxLibUsbScanner implements UsbScanner {
     }
 
     @Override
-    public List<UsbDevice> find(final String vendorId, final String productId) throws UsbException {
-        return null;
+    public List<UsbDeviceDescriptor> scan() throws UsbException {
+        return scan((vendorId, productId) -> true);
     }
 
     @Override
-    public List<UsbDevice> scan() throws UsbException {
+    public List<UsbDeviceDescriptor> scan(final Predicate<String> vendorFilter) throws UsbException {
+        assertNotNull(vendorFilter, "The Vendor ID filter cannot be null");
+        return scan((vendorId, productId) -> vendorFilter.test(vendorId));
+    }
+
+    @Override
+    public List<UsbDeviceDescriptor> scan(final BiPredicate<String, String> vendorProductFilter) throws UsbException {
+        assertNotNull(vendorProductFilter, "The Vendor and Product ID filter cannot be null");
         final DeviceList list = new DeviceList();
         final int result = LibUsb.getDeviceList(libUsbContext, list);
         if (result < 0) {
             throw new UsbException("Unable to get USB device list. Error code " + result);
         }
+
+        final var deviceList = new ArrayList<UsbDeviceDescriptor>();
 
         try {
             for (final Device device: list) {
@@ -90,34 +106,106 @@ public class LinuxLibUsbScanner implements UsbScanner {
                 final var vendorId = String.format("%04x", desc.idVendor() & '\uffff');
                 final var productId = String.format("%04x", desc.idProduct() & '\uffff');
 
-                final var portNo = LibUsb.getPortNumber(device);
-                final var busNo = LibUsb.getBusNumber(device);
-                final var devAddress = LibUsb.getDeviceAddress(device);
-
-                final var b = ByteBuffer.allocateDirect(8);
-                final var count = LibUsb.getPortNumbers(device, b);
-                final List<Integer> ports = new ArrayList<>();
-                for (int i = 0; i < count; ++i) {
-                    ports.add((int)b.get(i));
+                if (vendorProductFilter.test(vendorId, productId)) {
+                    deviceList.add(createDescriptor(device, vendorId, productId));
                 }
-
-                final var sysfs = busNo + "-" + ports.stream().map(String::valueOf).collect(Collectors.joining("."));
-                final var attachEvent = LinuxUsbDeviceAttachEvent.of(vendorId).withProductId(productId).withSysfs(sysfs);
-                final var vendor = Optional.ofNullable(knownUsbVendors.get(vendorId));
-                final var knownDevice = vendor.map(v -> v.getDevices().get(productId));
-                System.err.println(attachEvent + " " + vendor.map(VendorDescriptor::getName).orElse("Unknown Vendor")
-                        + " " + knownDevice.map(VendorDeviceDescriptor::getDescription).orElse(""));
             }
         } finally {
             // Ensure the allocated device list is freed
             LibUsb.freeDeviceList(list, true);
         }
-        return null;
+        return Collections.unmodifiableList(deviceList);
+    }
+
+    private UsbDeviceDescriptor createDescriptor(final Device device, final String vendorId, final String productId) {
+        final var portNo = LibUsb.getPortNumber(device);
+        final var busNo = LibUsb.getBusNumber(device);
+        final var devAddress = LibUsb.getDeviceAddress(device);
+
+        final var b = ByteBuffer.allocateDirect(8);
+        final var count = LibUsb.getPortNumbers(device, b);
+        final String sysfs;
+        if (count > 0) {
+            final List<Integer> ports = new ArrayList<>();
+            for (int i = 0; i < count; ++i) {
+                ports.add((int) b.get(i));
+            }
+
+            sysfs = busNo + "-" + ports.stream().map(String::valueOf).collect(Collectors.joining("."));
+        } else {
+            sysfs = "usb" + busNo;
+        }
+
+        final var id = LinuxDeviceId.fromSysfs(sysfs).withBusNo(busNo).withDeviceAddress(devAddress);
+        final var interfaceDescriptors = createInterfaceDescriptors(device, id);
+
+        final var vendor = Optional.ofNullable(knownUsbVendors.get(vendorId));
+        final var knownDevice = vendor.map(v -> v.getDevices().get(productId));
+        final var description = vendor.map(VendorDescriptor::getName).orElse("")
+                + " "
+                + knownDevice.map(VendorDeviceDescriptor::getDescription).orElse("");
+
+        final var dev = LinuxUsbDeviceDescriptor.of(id)
+                .withVendorId(vendorId)
+                .withProductId(productId)
+                .withDescription(description)
+                .build();
+
+        System.out.println(dev);
+        return dev;
+    }
+
+    private List<LinuxUsbInterfaceDescriptor> createInterfaceDescriptors(final Device device, final LinuxDeviceId id) {
+
+        final var configDescriptor = new ConfigDescriptor();
+        LibUsb.getActiveConfigDescriptor(device, configDescriptor);
+        final int configNumber = configDescriptor.bConfigurationValue() & 0xff;
+
+        final int countInterfaces = configDescriptor.bNumInterfaces() & 0xff;
+        System.out.println("we have " + countInterfaces);
+        final var ifaces = configDescriptor.iface();
+        for (int i = 0; i < countInterfaces; ++i) {
+            final var iface = ifaces[i];
+            final var altSettings = iface.altsetting();
+            for (final InterfaceDescriptor ifaceDesc : altSettings) {
+                final int number = ifaceDesc.bInterfaceNumber() & 0xff;
+                System.out.println(id.getSysfs() + ":" + configNumber + "." + number);
+            }
+        }
+
+        return List.of();
     }
 
     @Override
     public Optional<UsbDevice> find(final UsbDeviceDescriptor descriptor) throws UsbException {
-        return Optional.empty();
+        try {
+            final var linuxDescriptor = (LinuxUsbDeviceDescriptor) descriptor;
+            final var deviceSysfs = config.getDevicesFolder().resolve(linuxDescriptor.getSysfs());
+            // TODO: check so path is good and readable...
+
+            return Optional.empty();
+        } catch (final ClassCastException e) {
+            throw new IllegalArgumentException("This is the Linux scanner, you must supply a "
+                    + UsbDeviceDescriptor.class.getSimpleName() + " of subtype "
+                    + LinuxUsbDeviceDescriptor.class.getSimpleName());
+        }
+    }
+
+    private static Optional<Path> findUsbSerialInterface(final Path path) {
+        try {
+            final var ttys = Files.find(path, 1, (p, attr) -> attr.isDirectory() && p.getFileName().toString().startsWith("ttyUSB")).collect(Collectors.toList());
+            if (ttys.isEmpty()) {
+                return Optional.empty();
+            }
+            if (ttys.size() > 1) {
+                throw new UsbException("Can a Linux USB interface have many ttyUSB* serial ports defined?");
+            }
+
+            return Optional.of(ttys.get(0));
+        } catch (final IOException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
     }
 
     private boolean isRootHub(final UsbDeviceDescriptor descriptor) {

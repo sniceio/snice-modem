@@ -3,8 +3,8 @@ package io.snice.usb.impl;
 import io.snice.usb.UsbDevice;
 import io.snice.usb.UsbDeviceDescriptor;
 import io.snice.usb.UsbException;
+import io.snice.usb.UsbInterface;
 
-import javax.usb.UsbInterface;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,15 +18,15 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
 
 public class LinuxUsbDevice implements UsbDevice {
 
-    private final LinuxUsbDeviceDescriptor descriptor;
+    private final LinuxUsbDeviceDescriptorOld descriptor;
     private final String sysfs;
 
-    public static Builder of(final LinuxUsbDeviceDescriptor descriptor) {
+    public static Builder of(final LinuxUsbDeviceDescriptorOld descriptor) {
         assertNotNull(descriptor, "The USB device descriptor cannot be null");
         return new Builder(descriptor);
     }
 
-    private LinuxUsbDevice(final String sysfs, final LinuxUsbDeviceDescriptor descriptor) {
+    private LinuxUsbDevice(final String sysfs, final LinuxUsbDeviceDescriptorOld descriptor) {
         this.sysfs = sysfs;
         this.descriptor = descriptor;
     }
@@ -71,11 +71,11 @@ public class LinuxUsbDevice implements UsbDevice {
 
     public static class Builder {
 
-        private final LinuxUsbDeviceDescriptor descriptor;
+        private final LinuxUsbDeviceDescriptorOld descriptor;
         private String devicePath;
         private Path sysfsDevicesPath;
 
-        private Builder(final LinuxUsbDeviceDescriptor descriptor) {
+        private Builder(final LinuxUsbDeviceDescriptorOld descriptor) {
             this.descriptor = descriptor;
         }
 
@@ -92,7 +92,7 @@ public class LinuxUsbDevice implements UsbDevice {
         public LinuxUsbDevice build() {
             final var sysfs = ensureDevicePath(sysfsDevicesPath, devicePath);
             final var ifs = buildInterfaces(descriptor, sysfs, devicePath);
-            final var enhancedDescriptor = (LinuxUsbDeviceDescriptor)descriptor.copy().withUsbInterfaces(ifs).build();
+            final var enhancedDescriptor = (LinuxUsbDeviceDescriptorOld)descriptor.copy().withUsbInterfaces(ifs).build();
             return new LinuxUsbDevice(sysfs.getFileName().toString(), enhancedDescriptor);
         }
 
@@ -105,7 +105,7 @@ public class LinuxUsbDevice implements UsbDevice {
             return path;
         }
 
-        public static List<LinuxUsbInterfaceDescriptor> buildInterfaces(final LinuxUsbDeviceDescriptor descriptor, final Path sysfs, final String device) throws UsbException {
+        public static List<LinuxUsbInterfaceDescriptor> buildInterfaces(final LinuxUsbDeviceDescriptorOld descriptor, final Path sysfs, final String device) throws UsbException {
             try {
                 return Files.list(sysfs)
                         .map(Path::toFile)

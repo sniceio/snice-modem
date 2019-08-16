@@ -3,6 +3,7 @@ package io.snice.usb.impl;
 import io.snice.usb.UsbConfiguration;
 import io.snice.usb.UsbDevice;
 import io.snice.usb.UsbDeviceDescriptor;
+import io.snice.usb.UsbException;
 import io.snice.usb.UsbScanner;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
@@ -11,14 +12,13 @@ import org.usb4java.LibUsb;
 import org.usb4java.LibUsbException;
 
 import javax.usb.UsbEndpoint;
-import javax.usb.UsbException;
 import javax.usb.UsbInterface;
 import javax.usb.UsbPort;
 import javax.usb.UsbServices;
-import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -39,12 +39,12 @@ public class LibUsbScanner implements UsbScanner {
     }
 
     @Override
-    public List<UsbDevice> scan() throws IOException, ExecutionException, InterruptedException {
+    public List<UsbDeviceDescriptor> scan() throws UsbException {
         try {
             final var root = services.getRootUsbHub();
             dumpDevice(root);
             return List.of();
-        } catch (final UsbException e) {
+        } catch (final javax.usb.UsbException e) {
             e.printStackTrace();
         }
 
@@ -52,13 +52,18 @@ public class LibUsbScanner implements UsbScanner {
     }
 
     @Override
-    public Optional<UsbDevice> find(final UsbDeviceDescriptor descriptor) {
-        throw new RuntimeException("Not yet implemented");
+    public List<UsbDeviceDescriptor> scan(final Predicate<String> vendorFilter) throws UsbException {
+        return null;
     }
 
     @Override
-    public List<UsbDevice> find(final String vendorId, final String productId) throws io.snice.usb.UsbException {
+    public List<UsbDeviceDescriptor> scan(final BiPredicate<String, String> vendorProductFilter) throws UsbException {
         return null;
+    }
+
+    @Override
+    public Optional<UsbDevice> find(final UsbDeviceDescriptor descriptor) {
+        throw new RuntimeException("Not yet implemented");
     }
 
     public Device findDevice(final String vendorId, final String productId)

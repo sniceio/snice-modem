@@ -8,7 +8,7 @@ import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 
-public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
+public class LinuxUsbDeviceDescriptorOld implements UsbDeviceDescriptor {
     private final String busNo;
     private final String deviceNo;
     private final String vendorId;
@@ -16,12 +16,12 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
     private final Optional<String> vendorDescription;
     private final List<LinuxUsbInterfaceDescriptor> ifs;
 
-    private LinuxUsbDeviceDescriptor(final String busNo,
-                                     final String deviceNo,
-                                     final String vendorId,
-                                     final String productId,
-                                     final Optional<String> vendorDescription,
-                                     final List<LinuxUsbInterfaceDescriptor> ifs) {
+    private LinuxUsbDeviceDescriptorOld(final String busNo,
+                                        final String deviceNo,
+                                        final String vendorId,
+                                        final String productId,
+                                        final Optional<String> vendorDescription,
+                                        final List<LinuxUsbInterfaceDescriptor> ifs) {
         this.busNo = busNo;
         this.deviceNo = deviceNo;
         this.vendorId = vendorId;
@@ -74,7 +74,7 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
 
     public LinuxBuilder copy() {
         final var builder = new Builder(vendorId, productId);
-        builder.withVendorDescription(vendorDescription.orElse(null));
+        builder.withDescription(vendorDescription.orElse(null));
         builder.withBusNo(busNo);
         builder.withDeviceNo(deviceNo);
         builder.withUsbInterfaces(ifs);
@@ -101,7 +101,7 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
         }
 
         @Override
-        public LinuxBuilder withVendorDescription(final String description) {
+        public LinuxBuilder withDescription(final String description) {
             this.description = description;
             return this;
         }
@@ -127,9 +127,9 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
         }
 
         @Override
-        public LinuxUsbDeviceDescriptor build() {
+        public LinuxUsbDeviceDescriptorOld build() {
             final Optional<String> desc = description == null || description.trim().isEmpty() ? Optional.empty() : Optional.of(description);
-            return new LinuxUsbDeviceDescriptor(busNo, deviceNo, vendorId, productId, desc, ifs);
+            return new LinuxUsbDeviceDescriptorOld(busNo, deviceNo, vendorId, productId, desc, ifs);
         }
     }
 

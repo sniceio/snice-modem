@@ -55,32 +55,6 @@ public class LibUsbConfiguration {
         dmesgUsbDeviceDetached = Pattern.compile(USB_DEVICE_DISCONNECTED);
     }
 
-    /**
-     * Check whether we should process a vendor or not. If the user has specified a white list
-     * then it will be checked against that white list. If the user has not specified a white list then
-     * it is assumed that all should be allowed.
-     *
-     * @return
-     */
-    public boolean processDevice(final String vendorId, final String deviceId) {
-        if (whiteList.isEmpty()) {
-            return true;
-        }
-
-        final var devices = whiteList.get(vendorId);
-        if (devices == null) {
-            return false;
-        }
-
-        // an empty list means that the user configured to accept all
-        // devices from a particular vendor.
-        if (devices.isEmpty()) {
-            return true;
-        }
-
-        return devices.contains(deviceId);
-    }
-
     public Path getDevicesFolder() {
         return devicesFolder;
     }

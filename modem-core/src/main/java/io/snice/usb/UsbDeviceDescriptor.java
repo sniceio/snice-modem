@@ -1,6 +1,6 @@
 package io.snice.usb;
 
-import io.snice.usb.impl.LinuxUsbDeviceDescriptor;
+import io.snice.usb.impl.LinuxUsbDeviceDescriptorOld;
 
 import java.util.List;
 import java.util.Optional;
@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface UsbDeviceDescriptor {
 
     static ProductIdStep ofVendorId(final String vendorId) {
-        return LinuxUsbDeviceDescriptor.ofVendorId(vendorId);
+        return LinuxUsbDeviceDescriptorOld.ofVendorId(vendorId);
     }
 
     String getVendorId();
@@ -24,13 +24,16 @@ public interface UsbDeviceDescriptor {
 
     List<UsbInterfaceDescriptor> getInterfaces();
 
+    interface VendorIdStep {
+        ProductIdStep withVendorId(String vendorId);
+    }
+
     interface ProductIdStep {
         Builder withProductId(String productId);
     }
 
     interface Builder {
-        Builder withVendorDescription(String description);
-
+        Builder withDescription(String description);
         UsbDeviceDescriptor build();
     }
 

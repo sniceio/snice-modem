@@ -1,6 +1,5 @@
 package io.snice.usb;
 
-import javax.usb.UsbInterface;
 import java.util.List;
 import java.util.Optional;
 
