@@ -49,7 +49,6 @@ public class ProcessTail implements Tail {
         synchronized (lock) {
             try {
                 final var builder = new ProcessBuilder();
-                System.err.println("Executing cmd: " + cmd);
                 builder.command("/bin/sh", "-c", cmd);
                 process = builder.start();
                 final var output = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -94,13 +93,12 @@ public class ProcessTail implements Tail {
 
         @Override
         public void run() {
-            logger.info("Starting");
+            // logger.info("Starting");
             while(isRunning.get()) {
                 try {
                     final var line = stream.readLine();
                     if (line == null) {
                         // TODO: need a better strategy
-                        System.err.println("EOF???");
                         Thread.sleep(100);
                     } else if (matcher.apply(line)) {
                         onData.accept(line);
@@ -109,7 +107,7 @@ public class ProcessTail implements Tail {
                     // ignore
                 }
             }
-            logger.info("Stopping");
+            // logger.info("Stopping");
         }
     }
 

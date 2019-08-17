@@ -12,9 +12,9 @@ import org.usb4java.Context;
 import org.usb4java.Device;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceList;
-import org.usb4java.InterfaceDescriptor;
 import org.usb4java.LibUsb;
 
+import javax.usb.UsbConst;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -159,21 +159,88 @@ public class LinuxLibUsbScanner implements UsbScanner {
 
         final var configDescriptor = new ConfigDescriptor();
         LibUsb.getActiveConfigDescriptor(device, configDescriptor);
-        final int configNumber = configDescriptor.bConfigurationValue() & 0xff;
+        final int configNumber = getInt(configDescriptor.bConfigurationValue());
 
-        final int countInterfaces = configDescriptor.bNumInterfaces() & 0xff;
-        System.out.println("we have " + countInterfaces);
+        final int countInterfaces = getInt(configDescriptor.bNumInterfaces());
+        System.out.println("Number of interfaces " + countInterfaces);
         final var ifaces = configDescriptor.iface();
         for (int i = 0; i < countInterfaces; ++i) {
             final var iface = ifaces[i];
             final var altSettings = iface.altsetting();
-            for (final InterfaceDescriptor ifaceDesc : altSettings) {
-                final int number = ifaceDesc.bInterfaceNumber() & 0xff;
-                System.out.println(id.getSysfs() + ":" + configNumber + "." + number);
+            final int numAltSettings = iface.numAltsetting();
+            System.out.println("Alternative Settings: " + numAltSettings);
+            for (int k = 0; k < numAltSettings; ++k) {
+                final var ifaceDesc = altSettings[k];
+                // for (final InterfaceDescriptor ifaceDesc : altSettings) {
+                final var endpointCount = getInt(ifaceDesc.bNumEndpoints());
+                final int number = getInt(ifaceDesc.bInterfaceNumber());
+                final var sysfsInterface = id.getSysfs() + ":" + configNumber + "." + number;
+                final var sysfsPath = Path.of("/sys", "bus", "usb", "devices", id.getSysfs());
+                final var sysfsInterfacePath = sysfsPath.resolve(sysfsInterface);
+                System.out.println("   Interface " + i + " " + sysfsInterfacePath);
+
+
+                final Optional<Path> tty = findUsbSerialInterface(sysfsInterfacePath);
+                tty.ifPresent(usb -> System.out.println("           TTY: " + usb));
+
+                final var endpointDescs = ifaceDesc.endpoint();
+                for (int j = 0; j < endpointCount; ++j) {
+
+                    final var endpoint = endpointDescs[j];
+                    final byte address = endpoint.bEndpointAddress();
+                    final boolean in = (address & UsbConst.ENDPOINT_DIRECTION_MASK) == UsbConst.ENDPOINT_DIRECTION_IN;
+                    final boolean out = (address & UsbConst.ENDPOINT_DIRECTION_MASK) == UsbConst.ENDPOINT_DIRECTION_OUT;
+
+                    final DIRECTION direction;
+                    if (in && out) {
+                        direction = DIRECTION.INOUT;
+                    } else if (in) {
+                        direction = DIRECTION.IN;
+                    } else if (out) {
+                        direction = DIRECTION.OUT;
+                    } else {
+                        direction = DIRECTION.UNKNOWN;
+                    }
+
+                    final byte attribs = endpoint.bmAttributes();
+                    final boolean bulk =  (attribs & UsbConst.ENDPOINT_TYPE_MASK) == UsbConst.ENDPOINT_TYPE_BULK;
+                    final boolean control =  (attribs & UsbConst.ENDPOINT_TYPE_MASK) == UsbConst.ENDPOINT_TYPE_CONTROL;
+                    final boolean interrupt =  (attribs & UsbConst.ENDPOINT_TYPE_MASK) == UsbConst.ENDPOINT_TYPE_INTERRUPT;
+                    final boolean weird =  (attribs & UsbConst.ENDPOINT_TYPE_MASK) == UsbConst.ENDPOINT_TYPE_ISOCHRONOUS;
+
+
+                    final TYPE type;
+                    if (bulk) {
+                        type = TYPE.BULK;
+                    } else if (control) {
+                        type = TYPE.CONTROL;
+                    } else if (interrupt) {
+                        type = TYPE.INTERRUPT;
+                    } else if (weird){
+                        type = TYPE.ISOCHRONOUS;
+                    } else {
+                        type = TYPE.UNKNOWN;
+                    }
+
+                    // System.out.println("           EP " + j + " -> " + direction + " " + type);
+                }
+
             }
         }
 
         return List.of();
+    }
+
+    public enum DIRECTION {
+        IN, OUT, INOUT, UNKNOWN;
+    }
+
+    public enum TYPE {
+        BULK, CONTROL, INTERRUPT, ISOCHRONOUS, UNKNOWN;
+    }
+
+    private static int getInt(final byte b) {
+        return b & 0xff;
     }
 
     @Override
