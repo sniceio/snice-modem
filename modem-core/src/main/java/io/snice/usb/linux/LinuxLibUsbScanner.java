@@ -3,6 +3,7 @@ package io.snice.usb.linux;
 import io.snice.usb.UsbDevice;
 import io.snice.usb.UsbDeviceDescriptor;
 import io.snice.usb.UsbException;
+import io.snice.usb.UsbInterfaceDescriptor;
 import io.snice.usb.UsbScanner;
 import io.snice.usb.VendorDescriptor;
 import io.snice.usb.VendorDeviceDescriptor;
@@ -14,7 +15,6 @@ import org.usb4java.DeviceDescriptor;
 import org.usb4java.DeviceList;
 import org.usb4java.LibUsb;
 
-import javax.usb.UsbConst;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
@@ -121,22 +121,11 @@ public class LinuxLibUsbScanner implements UsbScanner {
         final var portNo = LibUsb.getPortNumber(device);
         final var busNo = LibUsb.getBusNumber(device);
         final var devAddress = LibUsb.getDeviceAddress(device);
+        final var isRootHub = isRootHub(vendorId, productId);
 
-        final var b = ByteBuffer.allocateDirect(8);
-        final var count = LibUsb.getPortNumbers(device, b);
-        final String sysfs;
-        if (count > 0) {
-            final List<Integer> ports = new ArrayList<>();
-            for (int i = 0; i < count; ++i) {
-                ports.add((int) b.get(i));
-            }
 
-            sysfs = busNo + "-" + ports.stream().map(String::valueOf).collect(Collectors.joining("."));
-        } else {
-            sysfs = "usb" + busNo;
-        }
-
-        final var id = LinuxDeviceId.fromSysfs(sysfs).withBusNo(busNo).withDeviceAddress(devAddress);
+        final var usbsysfs = constructUsbfs(device, busNo);
+        final var id = LinuxDeviceId.withUsbSysfs(usbsysfs).withBusNo(busNo).withDeviceAddress(devAddress).isRootHub(isRootHub);
         final var interfaceDescriptors = createInterfaceDescriptors(device, id);
 
         final var vendor = Optional.ofNullable(knownUsbVendors.get(vendorId));
@@ -149,94 +138,77 @@ public class LinuxLibUsbScanner implements UsbScanner {
                 .withVendorId(vendorId)
                 .withProductId(productId)
                 .withDescription(description)
+                .withUsbInterfaces(interfaceDescriptors)
                 .build();
 
-        System.out.println(dev);
         return dev;
     }
 
-    private List<LinuxUsbInterfaceDescriptor> createInterfaceDescriptors(final Device device, final LinuxDeviceId id) {
+    /**
+     * Construct the Linux USB sysfs device name for this device. There is a logic to this, which is:
+     *
+     * <pre>
+     * root_hub-hub_port:config.interface
+     * </pre>
+     *
+     * Source: Linux Device Drivers, 3rd Edition. Chapter 13. USB Drivers.
+     * You may see an excerpt here: https://www.oreilly.com/library/view/linux-device-drivers/0596005903/ch13.html
+     * (was available on August 17th, 2019)
+     *
+     * @param device
+     * @param busNo
+     * @return
+     */
+    private String constructUsbfs(final Device device, final int busNo) {
+        final var b = ByteBuffer.allocateDirect(8);
+        final var count = LibUsb.getPortNumbers(device, b);
+        if (count > 0) {
+            final List<Integer> ports = new ArrayList<>();
+            for (int i = 0; i < count; ++i) {
+                ports.add((int) b.get(i));
+            }
+
+            return busNo + "-" + ports.stream().map(String::valueOf).collect(Collectors.joining("."));
+        }
+        return "usb" + busNo;
+    }
+
+    private List<UsbInterfaceDescriptor> createInterfaceDescriptors(final Device device, final LinuxDeviceId id) {
+        final List<UsbInterfaceDescriptor> interfaces = new ArrayList<>();
+
+        final var usbfsRoot = config.getUsbSysfsRoot();
+        final var deviceUsbfsRoot = usbfsRoot.resolve(id.getSysfs());
 
         final var configDescriptor = new ConfigDescriptor();
         LibUsb.getActiveConfigDescriptor(device, configDescriptor);
         final int configNumber = getInt(configDescriptor.bConfigurationValue());
 
-        final int countInterfaces = getInt(configDescriptor.bNumInterfaces());
-        System.out.println("Number of interfaces " + countInterfaces);
         final var ifaces = configDescriptor.iface();
-        for (int i = 0; i < countInterfaces; ++i) {
+        for (int i = 0; i < getInt(configDescriptor.bNumInterfaces()); ++i) {
+
+            final var ifBuilder = LinuxUsbInterfaceDescriptor.of(deviceUsbfsRoot);
+
             final var iface = ifaces[i];
             final var altSettings = iface.altsetting();
-            final int numAltSettings = iface.numAltsetting();
-            System.out.println("Alternative Settings: " + numAltSettings);
-            for (int k = 0; k < numAltSettings; ++k) {
-                final var ifaceDesc = altSettings[k];
-                // for (final InterfaceDescriptor ifaceDesc : altSettings) {
-                final var endpointCount = getInt(ifaceDesc.bNumEndpoints());
+            for (int j = 0; j < iface.numAltsetting(); ++j) {
+                final var ifaceDesc = altSettings[j];
                 final int number = getInt(ifaceDesc.bInterfaceNumber());
-                final var sysfsInterface = id.getSysfs() + ":" + configNumber + "." + number;
-                final var sysfsPath = Path.of("/sys", "bus", "usb", "devices", id.getSysfs());
-                final var sysfsInterfacePath = sysfsPath.resolve(sysfsInterface);
-                System.out.println("   Interface " + i + " " + sysfsInterfacePath);
+                final var usbfsInterface = id.getSysfs() + ":" + configNumber + "." + number;
+                final var sysfsInterfacePath = deviceUsbfsRoot.resolve(usbfsInterface);
+                final Optional<Path> tty = id.isRootHub() ? Optional.empty() : findUsbSerialInterface(sysfsInterfacePath);
 
+                ifBuilder.withAlternateSetting(number, usbfsInterface, tty);
 
-                final Optional<Path> tty = findUsbSerialInterface(sysfsInterfacePath);
-                tty.ifPresent(usb -> System.out.println("           TTY: " + usb));
-
-                final var endpointDescs = ifaceDesc.endpoint();
-                for (int j = 0; j < endpointCount; ++j) {
-
-                    final var endpoint = endpointDescs[j];
-                    final byte address = endpoint.bEndpointAddress();
-                    final boolean in = (address & UsbConst.ENDPOINT_DIRECTION_MASK) == UsbConst.ENDPOINT_DIRECTION_IN;
-                    final boolean out = (address & UsbConst.ENDPOINT_DIRECTION_MASK) == UsbConst.ENDPOINT_DIRECTION_OUT;
-
-                    final DIRECTION direction;
-                    if (in && out) {
-                        direction = DIRECTION.INOUT;
-                    } else if (in) {
-                        direction = DIRECTION.IN;
-                    } else if (out) {
-                        direction = DIRECTION.OUT;
-                    } else {
-                        direction = DIRECTION.UNKNOWN;
-                    }
-
-                    final byte attribs = endpoint.bmAttributes();
-                    final boolean bulk =  (attribs & UsbConst.ENDPOINT_TYPE_MASK) == UsbConst.ENDPOINT_TYPE_BULK;
-                    final boolean control =  (attribs & UsbConst.ENDPOINT_TYPE_MASK) == UsbConst.ENDPOINT_TYPE_CONTROL;
-                    final boolean interrupt =  (attribs & UsbConst.ENDPOINT_TYPE_MASK) == UsbConst.ENDPOINT_TYPE_INTERRUPT;
-                    final boolean weird =  (attribs & UsbConst.ENDPOINT_TYPE_MASK) == UsbConst.ENDPOINT_TYPE_ISOCHRONOUS;
-
-
-                    final TYPE type;
-                    if (bulk) {
-                        type = TYPE.BULK;
-                    } else if (control) {
-                        type = TYPE.CONTROL;
-                    } else if (interrupt) {
-                        type = TYPE.INTERRUPT;
-                    } else if (weird){
-                        type = TYPE.ISOCHRONOUS;
-                    } else {
-                        type = TYPE.UNKNOWN;
-                    }
-
-                    // System.out.println("           EP " + j + " -> " + direction + " " + type);
+                final var endpoints = ifaceDesc.endpoint();
+                for (int k = 0; k < getInt(ifaceDesc.bNumEndpoints()); ++k) {
+                    ifBuilder.withEndpoint(LinuxUsbEndpoint.from(endpoints[k]));
                 }
 
             }
+            interfaces.add(ifBuilder.build());
         }
 
         return List.of();
-    }
-
-    public enum DIRECTION {
-        IN, OUT, INOUT, UNKNOWN;
-    }
-
-    public enum TYPE {
-        BULK, CONTROL, INTERRUPT, ISOCHRONOUS, UNKNOWN;
     }
 
     private static int getInt(final byte b) {
@@ -247,7 +219,7 @@ public class LinuxLibUsbScanner implements UsbScanner {
     public Optional<UsbDevice> find(final UsbDeviceDescriptor descriptor) throws UsbException {
         try {
             final var linuxDescriptor = (LinuxUsbDeviceDescriptor) descriptor;
-            final var deviceSysfs = config.getDevicesFolder().resolve(linuxDescriptor.getSysfs());
+            final var deviceSysfs = config.getUsbSysfsRoot().resolve(linuxDescriptor.getSysfs());
             // TODO: check so path is good and readable...
 
             return Optional.empty();

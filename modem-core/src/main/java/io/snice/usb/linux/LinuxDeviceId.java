@@ -12,14 +12,15 @@ public class LinuxDeviceId implements DeviceId {
     private final int busNo;
     private final int deviceAddress;
     private final String sysfs;
+    private final Boolean isRootHub;
 
-    public static final BusNoStep fromSysfs(final String sysfs) {
+    public static final BusNoStep withUsbSysfs(final String sysfs) {
         assertNotEmpty(sysfs, "The Linux sysfs folder of the USB device cannot be null or the empty String");
         return (busNo) -> {
             assertArgument(busNo >= 0, "The USB Bus number must be equal or greater than zero");
             return (deviceAddress) -> {
                 assertArgument(deviceAddress >= 0, "The Linux USB Device Address must be equal or greater than zero");
-                return new LinuxDeviceId(busNo, deviceAddress, sysfs);
+                return (isRootHub) -> new LinuxDeviceId(busNo, deviceAddress, sysfs, isRootHub);
             };
         };
     }
@@ -30,13 +31,18 @@ public class LinuxDeviceId implements DeviceId {
     }
 
     public interface DeviceAddressStep {
-        LinuxDeviceId withDeviceAddress(int deviceAddress);
+        RootHubStep withDeviceAddress(int deviceAddress);
     }
 
-    private LinuxDeviceId(final int busNo, final int deviceAddress, final String sysfs) {
+    public interface RootHubStep {
+        LinuxDeviceId isRootHub(boolean isRootHub);
+    }
+
+    private LinuxDeviceId(final int busNo, final int deviceAddress, final String sysfs, final boolean isRootHub) {
         this.busNo = busNo;
         this.deviceAddress = deviceAddress;
         this.sysfs = sysfs;
+        this.isRootHub = isRootHub;
     }
 
     public int getBusNo() {
@@ -49,6 +55,10 @@ public class LinuxDeviceId implements DeviceId {
 
     public String getSysfs() {
         return sysfs;
+    }
+
+    public boolean isRootHub() {
+        return isRootHub;
     }
 
     @Override

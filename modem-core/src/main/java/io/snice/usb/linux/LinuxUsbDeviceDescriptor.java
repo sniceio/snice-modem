@@ -81,6 +81,7 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
         private final String vendorId;
         private final String productId;
         private String description;
+        private List<UsbInterfaceDescriptor> ifs;
 
         private Builder(final LinuxDeviceId id, final String vendorId, final String productId) {
             this.id = id;
@@ -91,6 +92,12 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
         @Override
         public Builder withDescription(final String description) {
             this.description = description;
+            return this;
+        }
+
+        @Override
+        public UsbDeviceDescriptor.Builder withUsbInterfaces(final List<UsbInterfaceDescriptor> ifs) {
+            this.ifs = ifs;
             return this;
         }
 

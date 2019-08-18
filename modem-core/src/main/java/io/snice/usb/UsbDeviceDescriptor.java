@@ -34,6 +34,7 @@ public interface UsbDeviceDescriptor {
 
     interface Builder {
         Builder withDescription(String description);
+        Builder withUsbInterfaces(List<UsbInterfaceDescriptor> ifs);
         UsbDeviceDescriptor build();
     }
 

@@ -14,14 +14,14 @@ public class LinuxUsbDeviceDescriptorOld implements UsbDeviceDescriptor {
     private final String vendorId;
     private final String productId;
     private final Optional<String> vendorDescription;
-    private final List<LinuxUsbInterfaceDescriptor> ifs;
+    private final List<LinuxUsbInterfaceDescriptorOld> ifs;
 
     private LinuxUsbDeviceDescriptorOld(final String busNo,
                                         final String deviceNo,
                                         final String vendorId,
                                         final String productId,
                                         final Optional<String> vendorDescription,
-                                        final List<LinuxUsbInterfaceDescriptor> ifs) {
+                                        final List<LinuxUsbInterfaceDescriptorOld> ifs) {
         this.busNo = busNo;
         this.deviceNo = deviceNo;
         this.vendorId = vendorId;
@@ -77,14 +77,13 @@ public class LinuxUsbDeviceDescriptorOld implements UsbDeviceDescriptor {
         builder.withDescription(vendorDescription.orElse(null));
         builder.withBusNo(busNo);
         builder.withDeviceNo(deviceNo);
-        builder.withUsbInterfaces(ifs);
+        // builder.withUsbInterfaces(ifs);
         return builder;
     }
 
     interface LinuxBuilder extends UsbDeviceDescriptor.Builder {
         LinuxBuilder withBusNo(final String busNo);
         LinuxBuilder withDeviceNo(final String deviceNo);
-        LinuxBuilder withUsbInterfaces(final List<LinuxUsbInterfaceDescriptor> ifs);
     }
 
     public static class Builder implements LinuxBuilder {
@@ -93,7 +92,7 @@ public class LinuxUsbDeviceDescriptorOld implements UsbDeviceDescriptor {
         private String description;
         private String busNo;
         private String deviceNo;
-        private List<LinuxUsbInterfaceDescriptor> ifs;
+        private List<LinuxUsbInterfaceDescriptorOld> ifs;
 
         private Builder(final String vendorId, final String productId) {
             this.vendorId = vendorId;
@@ -121,8 +120,8 @@ public class LinuxUsbDeviceDescriptorOld implements UsbDeviceDescriptor {
         }
 
         @Override
-        public LinuxBuilder withUsbInterfaces(final List<LinuxUsbInterfaceDescriptor> ifs) {
-            this.ifs = ifs == null ? List.of() : List.copyOf(ifs);
+        public Builder withUsbInterfaces(final List<UsbInterfaceDescriptor> ifs) {
+            // this.ifs = ifs == null ? List.of() : List.copyOf(ifs);
             return this;
         }
 

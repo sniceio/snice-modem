@@ -213,6 +213,6 @@ public class LibUsbScannerTest extends UsbTestBase {
         final Map<String, List<String>> map = new HashMap<>();
         map.put("1-2", List.of("1-2:1.2/ttyUSB6", "1-2:1.0/ttyUSB4", "1-2:1.3/ttyUSB7", "1-2:1.1/ttyUSB5"));
         map.put("1-3", List.of("1-3:1.2/ttyUSB2", "1-3:1.0/ttyUSB0", "1-3:1.3/ttyUSB3", "1-3:1.1/ttyUSB1"));
-        // scanner.createDevice(config.getDevicesFolder(), "1-2", map.get("1-2"));
+        // scanner.createDevice(config.getUsbSysfsRoot(), "1-2", map.get("1-2"));
     }
 }

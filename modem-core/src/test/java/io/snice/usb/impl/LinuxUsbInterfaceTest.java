@@ -10,7 +10,7 @@ public class LinuxUsbInterfaceTest extends UsbTestBase {
 
     @Test
     public void testCreateUsbInterface() throws Exception {
-        final var desc = LinuxUsbInterfaceDescriptor.of(devicesPath.resolve("1-3").resolve("1-3:1.1"));
+        final var desc = LinuxUsbInterfaceDescriptorOld.of(devicesPath.resolve("1-3").resolve("1-3:1.1"));
         assertThat(desc.getUsbDevice(), is("1-3"));
         assertThat(desc.getUsbInterface(), is("1.1"));
     }

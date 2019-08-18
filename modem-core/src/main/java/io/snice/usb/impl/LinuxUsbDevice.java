@@ -91,8 +91,9 @@ public class LinuxUsbDevice implements UsbDevice {
 
         public LinuxUsbDevice build() {
             final var sysfs = ensureDevicePath(sysfsDevicesPath, devicePath);
-            final var ifs = buildInterfaces(descriptor, sysfs, devicePath);
-            final var enhancedDescriptor = (LinuxUsbDeviceDescriptorOld)descriptor.copy().withUsbInterfaces(ifs).build();
+            // final var ifs = buildInterfaces(descriptor, sysfs, devicePath);
+            // final var enhancedDescriptor = (LinuxUsbDeviceDescriptorOld)descriptor.copy().withUsbInterfaces(ifs).build();
+            final var enhancedDescriptor = (LinuxUsbDeviceDescriptorOld)descriptor.copy().build();
             return new LinuxUsbDevice(sysfs.getFileName().toString(), enhancedDescriptor);
         }
 
@@ -105,14 +106,14 @@ public class LinuxUsbDevice implements UsbDevice {
             return path;
         }
 
-        public static List<LinuxUsbInterfaceDescriptor> buildInterfaces(final LinuxUsbDeviceDescriptorOld descriptor, final Path sysfs, final String device) throws UsbException {
+        public static List<LinuxUsbInterfaceDescriptorOld> buildInterfaces(final LinuxUsbDeviceDescriptorOld descriptor, final Path sysfs, final String device) throws UsbException {
             try {
                 return Files.list(sysfs)
                         .map(Path::toFile)
                         .filter(File::isDirectory)
                         .map(File::toPath)
                         .filter(f -> f.getFileName().toString().startsWith(device + ":"))
-                        .map(LinuxUsbInterfaceDescriptor::of)
+                        .map(LinuxUsbInterfaceDescriptorOld::of)
                         .collect(Collectors.toList());
             } catch (final IOException e) {
                 throw new UsbException("Unable to scan the file system", e);
