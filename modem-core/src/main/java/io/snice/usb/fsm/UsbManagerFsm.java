@@ -2,19 +2,22 @@ package io.snice.usb.fsm;
 
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
+import io.snice.usb.UsbDevice;
+import io.snice.usb.UsbDeviceDescriptor;
 import io.snice.usb.UsbManagementEvent.TerminateEvent;
-import io.snice.usb.impl.LinuxUsbDeviceAttachEvent;
-import io.snice.usb.impl.LinuxUsbDeviceDetachEvent;
+import io.snice.usb.linux.LinuxUsbDeviceDescriptor;
 
-import static io.snice.usb.fsm.UsbManagerState.ATTACH;
-import static io.snice.usb.fsm.UsbManagerState.DETACH;
-import static io.snice.usb.fsm.UsbManagerState.DMESG;
+import java.util.stream.Collectors;
+
 import static io.snice.usb.fsm.UsbManagerState.IDLE;
+import static io.snice.usb.fsm.UsbManagerState.SCAN;
 import static io.snice.usb.fsm.UsbManagerState.TERMINATED;
 
 public class UsbManagerFsm {
 
     public static final Definition<UsbManagerState, UsbManagerContext, UsbManagerData> definition;
+
+    private static final String SCAN_TIMEOUT = "SCAN TIMEOUT";
 
     static {
         final var builder = FSM.of(UsbManagerState.class)
@@ -22,47 +25,37 @@ public class UsbManagerFsm {
                 .withDataType(UsbManagerData.class);
 
         final var idle = builder.withInitialState(IDLE);
-        final var dmesg = builder.withTransientState(DMESG);
-        final var attach = builder.withTransientState(ATTACH);
-        final var detach = builder.withTransientState(DETACH);
+        final var scan = builder.withTransientState(SCAN).withExitAction(UsbManagerFsm::onScanExit);
         final var terminated = builder.withFinalState(TERMINATED);
 
-        idle.transitionTo(DMESG).onEvent(String.class).withAction(UsbManagerFsm::processDmesg);
-        dmesg.transitionTo(IDLE).asDefaultTransition();
-
-        idle.transitionTo(ATTACH).onEvent(LinuxUsbDeviceAttachEvent.class).withAction(UsbManagerFsm::onAttach).withGuard(UsbManagerFsm::processEvent);
-        idle.transitionTo(IDLE).onEvent(LinuxUsbDeviceAttachEvent.class).withAction(evt -> System.err.println("Ignoring device"));
-
-        idle.transitionTo(DETACH).onEvent(LinuxUsbDeviceDetachEvent.class).consume();
+        idle.transitionTo(SCAN).onEvent(String.class).withGuard("SCAN"::equals).withAction(UsbManagerFsm::scan);
+        idle.transitionTo(SCAN).onEvent(String.class).withGuard(SCAN_TIMEOUT::equals).withAction(UsbManagerFsm::scan);
+        scan.transitionTo(IDLE).asDefaultTransition();
 
         idle.transitionTo(TERMINATED).onEvent(TerminateEvent.class);
-
-        attach.transitionTo(IDLE).asDefaultTransition();
-        detach.transitionTo(IDLE).asDefaultTransition();
 
         definition = builder.build();
     }
 
-    /**
-     * Process a line from DMESG. The entire Linux USB manager is relying to tailing dmesg and then reacting on
-     * those messages. Hence, if there is a match, we'll just push that to the ctx that will deal with it.
-     * In the scenario where this FSM is executing within an actor framework, this event will be pushed back
-     * to the FSM.
-     */
-    private static void processDmesg(final String dmesg, final UsbManagerContext ctx, final UsbManagerData data) {
-        ctx.getScanner().parseDmesg(dmesg)
-                .filter(evt -> {
-                    // ctx.getConfig().processDevice();
-                    return true;
-                }).ifPresent(ctx::processUsbEvent);
+    private static void onScanExit(final UsbManagerContext ctx, final UsbManagerData data) {
+        System.err.println("onScanExit");
+        ctx.getScheduler().schedule(() -> SCAN_TIMEOUT, ctx.getConfig().getScanInterval());
     }
 
+    private static void scan(final String event, final UsbManagerContext ctx, final UsbManagerData data) {
+        final var devices = ctx.getScanner().scan(ctx.getConfig()::processDevice).stream().map(dev -> (LinuxUsbDeviceDescriptor)dev).collect(Collectors.toList());
+        final var deviceIds = devices.stream().map(UsbDeviceDescriptor::getId).collect(Collectors.toList());
+        final var currentDevices = data.getDevices().stream().map(UsbDevice::getId).collect(Collectors.toList());
 
-    private static boolean processEvent(final LinuxUsbDeviceAttachEvent evt, final UsbManagerContext ctx, final UsbManagerData data) {
-        return ctx.getConfig().processDevice(evt.getVendorId(), evt.getProductId());
+        final var addDevices = deviceIds.stream().filter(id -> !currentDevices.contains(id)).collect(Collectors.toList());
+        final var delDevices = currentDevices.stream().filter(id -> !deviceIds.contains(id)).collect(Collectors.toList());
+
+        System.err.println("==== Added devicies: ");
+        addDevices.forEach(System.err::println);
+
+        System.err.println("==== Removed devicies: ");
+        delDevices.forEach(System.err::println);
+
     }
 
-    private static final void onAttach(final LinuxUsbDeviceAttachEvent evt, final UsbManagerContext ctx, final UsbManagerData data) {
-        System.err.println("Yeah, attaching...");
-    }
 }

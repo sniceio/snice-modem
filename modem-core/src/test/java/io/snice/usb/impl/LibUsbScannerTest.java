@@ -3,6 +3,7 @@ package io.snice.usb.impl;
 import io.snice.usb.UsbTestBase;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.usb4java.Context;
 import org.usb4java.DeviceDescriptor;
 import org.usb4java.LibUsb;
@@ -39,7 +40,8 @@ public class LibUsbScannerTest extends UsbTestBase {
     public void setup() throws Exception {
         super.setup();
         usbServices = UsbHostManager.getUsbServices();
-        scanner = LibUsbScanner.of(usbServices, config);
+        // scanner = LibUsbScanner.of(usbServices, config);
+        scanner = Mockito.mock(LibUsbScanner.class);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package io.snice.usb.linux;
 
+import io.snice.usb.DeviceId;
 import io.snice.usb.UsbDeviceDescriptor;
 import io.snice.usb.UsbInterfaceDescriptor;
 
@@ -58,6 +59,11 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
     @Override
     public String getProductId() {
         return productId;
+    }
+
+    @Override
+    public DeviceId getId() {
+        return id;
     }
 
     @Override

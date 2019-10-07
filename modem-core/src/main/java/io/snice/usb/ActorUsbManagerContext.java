@@ -3,20 +3,20 @@ package io.snice.usb;
 import io.hektor.core.ActorRef;
 import io.hektor.fsm.Scheduler;
 import io.snice.usb.fsm.UsbManagerContext;
-import io.snice.usb.impl.LinuxUsbDevice;
 import io.snice.usb.impl.LinuxUsbDeviceEvent;
-import io.snice.usb.impl.LinuxUsbScanner;
+import io.snice.usb.impl.LinuxUsbDeviceOld;
+import io.snice.usb.linux.LibUsbConfiguration;
 
 import java.util.Map;
 
 public class ActorUsbManagerContext implements UsbManagerContext {
 
     private final ActorRef self;
-    private final UsbConfiguration config;
-    private final LinuxUsbScanner scanner;
+    private final LibUsbConfiguration config;
+    private final UsbScanner scanner;
     private final Map<String, VendorDescriptor> knownUsbVendors;
 
-    public ActorUsbManagerContext(final ActorRef self, final LinuxUsbScanner scanner, final UsbConfiguration config, final Map<String, VendorDescriptor> knownUsbVendors) {
+    public ActorUsbManagerContext(final ActorRef self, final UsbScanner scanner, final LibUsbConfiguration config, final Map<String, VendorDescriptor> knownUsbVendors) {
         this.self = self;
         this.scanner = scanner;
         this.config = config;
@@ -24,28 +24,13 @@ public class ActorUsbManagerContext implements UsbManagerContext {
     }
 
     @Override
-    public UsbConfiguration getConfig() {
+    public LibUsbConfiguration getConfig() {
         return config;
     }
 
     @Override
-    public LinuxUsbScanner getScanner() {
+    public UsbScanner getScanner() {
         return scanner;
-    }
-
-    @Override
-    public void processUsbEvent(final LinuxUsbDeviceEvent evt) {
-        self.tell(evt);
-    }
-
-    @Override
-    public void deviceAttached(final LinuxUsbDevice device) {
-
-    }
-
-    @Override
-    public void deviceDetached(final LinuxUsbDevice device) {
-
     }
 
     @Override

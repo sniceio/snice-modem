@@ -1,5 +1,6 @@
 package io.snice.usb;
 
+import io.snice.usb.linux.LibUsbConfiguration;
 import io.snice.usb.linux.UsbIdLoader;
 import org.junit.Before;
 
@@ -13,7 +14,7 @@ import static org.mockito.Mockito.when;
 public class UsbTestBase {
 
     protected Path devicesPath;
-    protected UsbConfiguration config;
+    protected LibUsbConfiguration config;
 
     protected UsbDeviceDescriptor quectelDescriptor;
     protected UsbDeviceDescriptor sierraDescriptor;
@@ -24,7 +25,7 @@ public class UsbTestBase {
     public void setup() throws Exception {
         devicesPath = findResource("devices");
 
-        config = UsbConfiguration.of().build();
+        config = LibUsbConfiguration.of().build();
 
         // Quectel BG96
         quectelDescriptor = mock(UsbDeviceDescriptor.class);

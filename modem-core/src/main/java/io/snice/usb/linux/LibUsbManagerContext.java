@@ -3,8 +3,8 @@ package io.snice.usb.linux;
 import io.hektor.fsm.Context;
 import io.snice.usb.UsbConfiguration;
 import io.snice.usb.UsbDevice;
-import io.snice.usb.impl.LinuxUsbDevice;
 import io.snice.usb.impl.LinuxUsbDeviceEvent;
+import io.snice.usb.impl.LinuxUsbDeviceOld;
 import io.snice.usb.impl.LinuxUsbScanner;
 
 public interface LibUsbManagerContext extends Context {
@@ -20,11 +20,11 @@ public interface LibUsbManagerContext extends Context {
      *
      * @param device
      */
-    void deviceAttached(final LinuxUsbDevice device);
+    void deviceAttached(final LinuxUsbDeviceOld device);
 
     /**
      * Will be called when a new {@link UsbDevice} detached from the system.
      * @param device
      */
-    void deviceDetached(final LinuxUsbDevice device);
+    void deviceDetached(final LinuxUsbDeviceOld device);
 }

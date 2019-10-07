@@ -13,25 +13,20 @@ import io.hektor.core.Hektor;
 import io.hektor.core.Props;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
-import io.snice.processes.Tail;
 import io.snice.usb.ActorUsbManagerContext;
 import io.snice.usb.FsmActor;
 import io.snice.usb.OnStartFunction;
-import io.snice.usb.UsbConfiguration;
 import io.snice.usb.fsm.UsbManagerContext;
 import io.snice.usb.fsm.UsbManagerData;
 import io.snice.usb.fsm.UsbManagerFsm;
-import io.snice.usb.impl.LinuxUsbScanner;
+import io.snice.usb.linux.LibUsbConfiguration;
+import io.snice.usb.linux.LinuxLibUsbScanner;
 import io.snice.usb.linux.UsbIdLoader;
 
-import javax.usb.UsbDevice;
-import javax.usb.UsbDeviceDescriptor;
 import javax.usb.UsbException;
-import javax.usb.UsbHub;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
@@ -57,29 +52,10 @@ public class Shell {
         return mapper.readValue(configFile.toFile(), ShellConfig.class);
     }
 
-    public static UsbDevice findDevice(final UsbHub hub, final short vendorId, final short productId)
-    {
-        for (final UsbDevice device : (List<UsbDevice>) hub.getAttachedUsbDevices())
-        {
-            final UsbDeviceDescriptor desc = device.getUsbDeviceDescriptor();
-            System.err.println(desc);
-
-            // if (desc.idVendor() == vendorId && desc.idProduct() == productId) return device;
-
-            if (device.isUsbHub()) {
-                System.err.println("yep, is hub");
-                // device = findDevice((UsbHub) device, vendorId, productId);
-                // if (device != null)
-                    // return device;
-            }
-        }
-        return null;
-    }
-
-    private static Props configureUsbManager(final ExecutorService blockingIoPool, final UsbConfiguration usbConfiguration) throws UsbException {
+    private static Props configureUsbManager(final ExecutorService blockingIoPool, final LibUsbConfiguration usbConfiguration) throws UsbException {
 
         final var knownUsbVendors = UsbIdLoader.load();
-        final var scanner = LinuxUsbScanner.of(usbConfiguration, knownUsbVendors);
+        final var scanner = LinuxLibUsbScanner.of(usbConfiguration, knownUsbVendors);
 
         final Function<ActorRef, UsbManagerContext> usbManagerCtx
                 = (ref) ->  new ActorUsbManagerContext(ref, scanner, usbConfiguration, knownUsbVendors);
@@ -91,14 +67,7 @@ public class Shell {
             // var props = LinuxUsbDmesgMonitor.props(blockingIoPool, usbConfiguration, scanner);
             // var usbMonitor = actorCtx.actorOf("monitor", props);
             final var self = actorCtx.self();
-            final var config = ctx.getConfig();
-            final var tail = Tail.tailProcess("dmesg --follow")
-                    .withThreadPool(blockingIoPool)
-                    .onNewLine(self::tell)
-                    .onError(System.err::println)
-                    .withFilter(config.getDmesgUsbDeviceAttachedPattern().pattern() + "|" + config.getDmesgUsbDeviceDetachedPattern().pattern())
-                    .build();
-            tail.start();
+            self.tell("SCAN");
         };
 
         return FsmActor.of(UsbManagerFsm.definition)
@@ -109,8 +78,6 @@ public class Shell {
     }
 
     public static void main(final String... args) throws Exception {
-        // findDevice(null, (short)9, (short)9);
-
 
         // TODO: got to have a proper command line arg stuff.
         final ShellConfig shellConfig = loadConfig(args[0]);

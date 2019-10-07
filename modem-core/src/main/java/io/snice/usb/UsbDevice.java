@@ -14,6 +14,8 @@ public interface UsbDevice {
     String getVendorId();
     String getProductId();
 
+    DeviceId getId();
+
     /**
      * A human friendly description of the vendor.
      *

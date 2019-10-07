@@ -1,30 +1,13 @@
 package io.snice.usb.fsm;
 
 import io.hektor.fsm.Context;
-import io.snice.usb.UsbConfiguration;
-import io.snice.usb.UsbDevice;
-import io.snice.usb.impl.LinuxUsbDevice;
-import io.snice.usb.impl.LinuxUsbDeviceEvent;
-import io.snice.usb.impl.LinuxUsbScanner;
+import io.snice.usb.UsbScanner;
+import io.snice.usb.linux.LibUsbConfiguration;
 
 public interface UsbManagerContext extends Context {
 
-    UsbConfiguration getConfig();
+    LibUsbConfiguration getConfig();
 
-    LinuxUsbScanner getScanner();
+    UsbScanner getScanner();
 
-    void processUsbEvent(LinuxUsbDeviceEvent evt);
-
-    /**
-     * Will be called when a new {@link UsbDevice} attached to the system
-     *
-     * @param device
-     */
-    void deviceAttached(final LinuxUsbDevice device);
-
-    /**
-     * Will be called when a new {@link UsbDevice} detached from the system.
-     * @param device
-     */
-    void deviceDetached(final LinuxUsbDevice device);
 }

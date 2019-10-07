@@ -120,9 +120,9 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
 
     /**
      * Unique to Linux. The {@link LinuxUsbDmesgMonitor} is "tailing" dmesg and whenever it detects a
-     * "New USB device connected" message, it'll call this method to setup the new {@link LinuxUsbDevice}
+     * "New USB device connected" message, it'll call this method to setup the new {@link LinuxUsbDeviceOld}
      */
-    public List<LinuxUsbDevice> processDmesgNewDevice(final LinuxUsbDeviceAttachEvent evt) {
+    public List<LinuxUsbDeviceOld> processDmesgNewDevice(final LinuxUsbDeviceAttachEvent evt) {
         final var vendorId = evt.getVendorId();
         final var productId = evt.getProductId();
         final var sysfs = evt.getSysfs();
@@ -140,7 +140,7 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
             final var cmd = String.format(LSUSB_CMD, vendorId, productId);
             final var usbDevices = Processes.execute(cmd).toCompletableFuture().get(5000, TimeUnit.MILLISECONDS).stream()
                     .map(LinuxUsbScanner::mapToDeviceDescriptor)
-                    .map(desc -> LinuxUsbDevice.of(desc).withDevicePath(sysfs).withLinuxSysfsDevicesPath(config.getDevicesFolder()).build())
+                    .map(desc -> LinuxUsbDeviceOld.of(desc).withDevicePath(sysfs).withLinuxSysfsDevicesPath(config.getDevicesFolder()).build())
                     .collect(Collectors.toList());
             return usbDevices;
         } catch (final TimeoutException e) {
@@ -172,7 +172,7 @@ public class LinuxUsbScanner implements UsbScanner, LoggingSupport {
         }
 
         final var sysfs = matcher.group(1);
-        final var dev =  LinuxUsbDevice.of(linuxDescriptor)
+        final var dev =  LinuxUsbDeviceOld.of(linuxDescriptor)
                 .withDevicePath(sysfs)
                 .withLinuxSysfsDevicesPath(config.getDevicesFolder())
                 .build();

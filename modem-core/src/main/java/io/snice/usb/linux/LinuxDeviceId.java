@@ -38,6 +38,11 @@ public class LinuxDeviceId implements DeviceId {
         LinuxDeviceId isRootHub(boolean isRootHub);
     }
 
+    @Override
+    public String toString() {
+        return String.format("Bus %03d Device %03d Sysfs %s", getBusNo(), deviceAddress, sysfs);
+    }
+
     private LinuxDeviceId(final int busNo, final int deviceAddress, final String sysfs, final boolean isRootHub) {
         this.busNo = busNo;
         this.deviceAddress = deviceAddress;

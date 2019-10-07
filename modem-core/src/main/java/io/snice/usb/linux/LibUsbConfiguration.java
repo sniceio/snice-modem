@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,10 +21,7 @@ public class LibUsbConfiguration {
 
     private final Path usbfs;
 
-
-    // private static final String USB_DEVICE_CONNECTED = "\\[.*\\] usb (\\d-\\d[\\.\\d]*): *New USB device found, idVendor=([a-f,A-F,0-9]+), idProduct=([a-f,A-F,0-9]+).*";
-    // private static final String USB_DEVICE_DISCONNECTED = "\\[.*\\] usb (\\d-\\d[\\.\\d]*):.*device number.*(\\d+).*";
-
+    private final Duration scanInterval = Duration.ofMillis(500);
 
     /**
      * A list of <vendor_id>[:<device_id>] that will be the only ones
@@ -39,6 +37,37 @@ public class LibUsbConfiguration {
         this.usbfs = usbfs;
         this.whiteList = whiteList;
     }
+
+    public Duration getScanInterval() {
+        return scanInterval;
+    }
+
+    /**
+     * Check whether we should process a vendor or not. If the user has specified a white list
+     * then it will be checked against that white list. If the user has not specified a white list then
+     * it is assumed that all should be allowed.
+     *
+     * @return
+     */
+    public boolean processDevice(final String vendorId, final String deviceId) {
+        if (whiteList.isEmpty()) {
+            return true;
+        }
+
+        final var devices = whiteList.get(vendorId);
+        if (devices == null) {
+            return false;
+        }
+
+        // an empty list means that the user configured to accept all
+        // devices from a particular vendor.
+        if (devices.isEmpty()) {
+            return true;
+        }
+
+        return devices.contains(deviceId);
+    }
+
 
     public Path getUsbSysfsRoot() {
         return usbfs;

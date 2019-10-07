@@ -1,5 +1,6 @@
 package io.snice.usb.impl;
 
+import io.snice.usb.DeviceId;
 import io.snice.usb.UsbDevice;
 import io.snice.usb.UsbDeviceDescriptor;
 import io.snice.usb.UsbException;
@@ -16,7 +17,7 @@ import java.util.stream.Collectors;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public class LinuxUsbDevice implements UsbDevice {
+public class LinuxUsbDeviceOld implements UsbDevice {
 
     private final LinuxUsbDeviceDescriptorOld descriptor;
     private final String sysfs;
@@ -26,7 +27,7 @@ public class LinuxUsbDevice implements UsbDevice {
         return new Builder(descriptor);
     }
 
-    private LinuxUsbDevice(final String sysfs, final LinuxUsbDeviceDescriptorOld descriptor) {
+    private LinuxUsbDeviceOld(final String sysfs, final LinuxUsbDeviceDescriptorOld descriptor) {
         this.sysfs = sysfs;
         this.descriptor = descriptor;
     }
@@ -52,6 +53,11 @@ public class LinuxUsbDevice implements UsbDevice {
     @Override
     public String getProductId() {
         return descriptor.getProductId();
+    }
+
+    @Override
+    public DeviceId getId() {
+        return null;
     }
 
     @Override
@@ -89,12 +95,12 @@ public class LinuxUsbDevice implements UsbDevice {
             return this;
         }
 
-        public LinuxUsbDevice build() {
+        public LinuxUsbDeviceOld build() {
             final var sysfs = ensureDevicePath(sysfsDevicesPath, devicePath);
             // final var ifs = buildInterfaces(descriptor, sysfs, devicePath);
             // final var enhancedDescriptor = (LinuxUsbDeviceDescriptorOld)descriptor.copy().withUsbInterfaces(ifs).build();
             final var enhancedDescriptor = (LinuxUsbDeviceDescriptorOld)descriptor.copy().build();
-            return new LinuxUsbDevice(sysfs.getFileName().toString(), enhancedDescriptor);
+            return new LinuxUsbDeviceOld(sysfs.getFileName().toString(), enhancedDescriptor);
         }
 
         private static Path ensureDevicePath(final Path sysfsPath, final String devicePath) {

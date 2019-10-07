@@ -1,6 +1,7 @@
 package io.snice.usb.fsm;
 
 import io.hektor.fsm.Data;
+import io.snice.usb.DeviceId;
 import io.snice.usb.UsbDevice;
 
 import java.util.ArrayList;
@@ -13,6 +14,10 @@ public class UsbManagerData implements Data {
 
     public void store(UsbDevice device) {
         devices.add(device);
+    }
+
+    public void remove(DeviceId id) {
+
     }
 
     public List<UsbDevice> getDevices() {

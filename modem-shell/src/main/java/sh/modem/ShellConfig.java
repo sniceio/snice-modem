@@ -6,6 +6,7 @@ import io.hektor.config.HektorConfiguration;
 import io.snice.modem.actors.CommandConfiguration;
 import io.snice.modem.actors.ModemConfiguration;
 import io.snice.usb.UsbConfiguration;
+import io.snice.usb.linux.LibUsbConfiguration;
 
 public class ShellConfig {
 
@@ -22,7 +23,7 @@ public class ShellConfig {
     private CommandConfiguration commandConfiguration;
 
     @JsonProperty("usb")
-    private UsbConfiguration usbConfiguration;
+    private LibUsbConfiguration usbConfiguration;
 
     public ModemConfiguration getModemConfiguration() {
         return modemConfiguration;
@@ -40,7 +41,7 @@ public class ShellConfig {
         return consoleConfig;
     }
 
-    public UsbConfiguration getUsbConfiguration() {
+    public LibUsbConfiguration getUsbConfiguration() {
         return usbConfiguration;
     }
 
