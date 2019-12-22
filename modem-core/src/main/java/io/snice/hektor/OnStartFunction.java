@@ -1,4 +1,4 @@
-package io.snice.usb;
+package io.snice.hektor;
 
 import io.hektor.core.ActorContext;
 import io.hektor.fsm.Context;

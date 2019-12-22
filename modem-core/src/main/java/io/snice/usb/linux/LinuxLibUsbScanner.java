@@ -208,7 +208,7 @@ public class LinuxLibUsbScanner implements UsbScanner {
             interfaces.add(ifBuilder.build());
         }
 
-        return List.of();
+        return List.copyOf(interfaces);
     }
 
     private static int getInt(final byte b) {

@@ -3,6 +3,9 @@ package io.snice.usb;
 import io.hektor.core.Actor;
 import io.hektor.core.ActorContext;
 import io.hektor.core.ActorRef;
+import io.snice.hektor.FsmActor;
+import io.snice.hektor.OnStartFunction;
+import io.snice.hektor.OnStopFunction;
 import io.snice.usb.fsm.UsbManagerContext;
 import io.snice.usb.fsm.UsbManagerData;
 import io.snice.usb.fsm.UsbManagerFsm;
@@ -31,7 +34,7 @@ public class UsbManagerActorTest extends UsbTestBase {
         super.setup();;
         data = new UsbManagerData();
         scanner = mock(LinuxUsbScanner.class);
-        var ref = mock(ActorRef.class);
+        final var ref = mock(ActorRef.class);
 
         usbManagerContext = new ActorUsbManagerContext(ref, scanner, config, knownUsbVendors);
 

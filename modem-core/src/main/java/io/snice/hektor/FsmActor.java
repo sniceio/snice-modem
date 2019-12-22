@@ -1,4 +1,4 @@
-package io.snice.usb;
+package io.snice.hektor;
 
 import io.hektor.actors.LoggingSupport;
 import io.hektor.core.Actor;
@@ -31,14 +31,14 @@ public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data
 
     private FSM<S, C, D> fsm;
 
-    private Function<ActorRef, C> contextSupplier;
-    private Supplier<D> dataSupplier;
+    private final Function<ActorRef, C> contextSupplier;
+    private final Supplier<D> dataSupplier;
 
     private C context;
     private D data;
 
-    private OnStartFunction<C, D> onStart;
-    private OnStopFunction<C, D> onStop;
+    private final OnStartFunction<C, D> onStart;
+    private final OnStopFunction<C, D> onStop;
 
 
     public static <S extends Enum<S>, C extends Context, D extends Data> Builder<S, C, D> of(final Definition<S, C, D> definition) {

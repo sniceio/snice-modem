@@ -58,7 +58,7 @@ public class LinuxUsbInterfaceDescriptor implements UsbInterfaceDescriptor {
         }
 
         public LinuxUsbInterfaceDescriptor build() {
-            return null;
+            return new LinuxUsbInterfaceDescriptor(sysfs, List.copyOf(endpoints), List.copyOf(altSettings));
         }
 
     }

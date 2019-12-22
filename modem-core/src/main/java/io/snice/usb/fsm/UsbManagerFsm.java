@@ -39,7 +39,7 @@ public class UsbManagerFsm {
 
     private static void onScanExit(final UsbManagerContext ctx, final UsbManagerData data) {
         System.err.println("onScanExit");
-        ctx.getScheduler().schedule(() -> SCAN_TIMEOUT, ctx.getConfig().getScanInterval());
+        // ctx.getScheduler().schedule(() -> SCAN_TIMEOUT, ctx.getConfig().getScanInterval());
     }
 
     private static void scan(final String event, final UsbManagerContext ctx, final UsbManagerData data) {

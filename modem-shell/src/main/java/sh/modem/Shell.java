@@ -13,9 +13,9 @@ import io.hektor.core.Hektor;
 import io.hektor.core.Props;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
+import io.snice.hektor.FsmActor;
+import io.snice.hektor.OnStartFunction;
 import io.snice.usb.ActorUsbManagerContext;
-import io.snice.usb.FsmActor;
-import io.snice.usb.OnStartFunction;
 import io.snice.usb.fsm.UsbManagerContext;
 import io.snice.usb.fsm.UsbManagerData;
 import io.snice.usb.fsm.UsbManagerFsm;
@@ -64,8 +64,6 @@ public class Shell {
 
         final OnStartFunction<UsbManagerContext, UsbManagerData> onStart = (actorCtx, ctx, data) -> {
             System.err.println("I guess the FSM is starting. This is pretty cool actually");
-            // var props = LinuxUsbDmesgMonitor.props(blockingIoPool, usbConfiguration, scanner);
-            // var usbMonitor = actorCtx.actorOf("monitor", props);
             final var self = actorCtx.self();
             self.tell("SCAN");
         };
