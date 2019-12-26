@@ -2,6 +2,7 @@ package io.snice.modem.actors.fsm;
 
 import io.hektor.fsm.Context;
 import io.hektor.fsm.Data;
+import io.hektor.fsm.Scheduler;
 import org.junit.After;
 import org.junit.Before;
 import org.mockito.Mockito;
@@ -19,14 +20,22 @@ public class FsmTestBase<S extends Enum<S>, C extends Context, D extends Data> {
 
     protected final BiConsumer<S, Object> unhandledEventHandler = mock(BiConsumer.class);
 
+    protected Scheduler scheduler;
+
     @Before
     public void setup() throws Exception {
+        this.scheduler = mockScheduler();
     }
 
 
     @After
     public void tearDown() throws Exception {
         ensureNoUnhandledEvents();
+    }
+
+    protected Scheduler mockScheduler() {
+        final var schedular = mock(Scheduler.class);
+        return schedular;
     }
 
     /**

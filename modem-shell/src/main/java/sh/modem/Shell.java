@@ -15,10 +15,15 @@ import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
 import io.snice.hektor.FsmActor;
 import io.snice.hektor.OnStartFunction;
-import io.snice.usb.ActorUsbManagerContext;
+import io.snice.modem.fsm.ModemManagerContext;
+import io.snice.modem.fsm.ModemManagerData;
+import io.snice.modem.fsm.ModemManagerFsm;
+import io.snice.modem.hektor.ActorModemManagerContext;
+import io.snice.usb.event.Scan;
 import io.snice.usb.fsm.UsbManagerContext;
 import io.snice.usb.fsm.UsbManagerData;
 import io.snice.usb.fsm.UsbManagerFsm;
+import io.snice.usb.hektor.ActorUsbManagerContext;
 import io.snice.usb.linux.LibUsbConfiguration;
 import io.snice.usb.linux.LinuxLibUsbScanner;
 import io.snice.usb.linux.UsbIdLoader;
@@ -63,15 +68,32 @@ public class Shell {
         final UsbManagerData usbManagerData = new UsbManagerData();
 
         final OnStartFunction<UsbManagerContext, UsbManagerData> onStart = (actorCtx, ctx, data) -> {
-            System.err.println("I guess the FSM is starting. This is pretty cool actually");
             final var self = actorCtx.self();
-            self.tell("SCAN");
+            self.tell(Scan.SCAN);
         };
 
         return FsmActor.of(UsbManagerFsm.definition)
                 .withContext(usbManagerCtx)
                 .withData(usbManagerData)
                 .withStartFunction(onStart)
+                .build();
+    }
+
+    private static Props configureModemSubSystem(final ActorRef usbSubSystem) {
+
+        final OnStartFunction<ModemManagerContext, ModemManagerData> onStart = (actorCtx, ctx, data) -> {
+            final var self = actorCtx.self();
+            self.tell(Scan.SCAN);
+        };
+
+        final Function<ActorRef, ModemManagerContext> ctx
+                = (ref) ->  ActorModemManagerContext.withUsbSubSystem(usbSubSystem).withSelf(ref).build();
+
+        final var data = new ModemManagerData();
+
+        return FsmActor.of(ModemManagerFsm.definition)
+                .withContext(ctx)
+                .withData(data)
                 .build();
     }
 
@@ -86,12 +108,14 @@ public class Shell {
 
         final Hektor hektor = Hektor.withName("modem.sh").withConfiguration(hektorConfig).build();
 
-
         // final var props = FsmActor.of(UsbManagerFsm.definition).build();
 
         // final ActorRef usbManager = hektor.actorOf(UsbManagerActor.props(services, usbConfiguration), "usb");
         final var usbProps = configureUsbManager(blockingIoPool, shellConfig.getUsbConfiguration());
-        hektor.actorOf(usbProps, "usb");
+        final var usbSubSystem = hektor.actorOf(usbProps, "usb");
+
+        final var modemProps = configureModemSubSystem(usbSubSystem);
+        final var modemSubSystem = hektor.actorOf(modemProps, "modems");
 
         // final ActorRef modemManager = hektor.actorOf(ModemManagerActor.props(blockingIoPool), "modem_manager");
         // final ActorRef shell = hektor.actorOf(ShellActor.props(shellConfig, blockingIoPool, modemManager, System.in, System.out), "shell");

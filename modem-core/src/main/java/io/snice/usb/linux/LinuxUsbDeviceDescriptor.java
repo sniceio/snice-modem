@@ -5,6 +5,7 @@ import io.snice.usb.UsbDeviceDescriptor;
 import io.snice.usb.UsbInterfaceDescriptor;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
@@ -16,15 +17,18 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
     private final String vendorId;
     private final String productId;
     private final Optional<String> vendorDescription;
+    private final List<UsbInterfaceDescriptor> ifs;
 
     private LinuxUsbDeviceDescriptor(final LinuxDeviceId id,
                                      final String vendorId,
                                      final String productId,
-                                     final Optional<String> vendorDescription) {
+                                     final Optional<String> vendorDescription,
+                                     final List<UsbInterfaceDescriptor> ifs) {
         this.id = id;
         this.vendorId = vendorId;
         this.productId = productId;
         this.vendorDescription = vendorDescription;
+        this.ifs = ifs;
     }
 
     public static VendorIdStep of(final LinuxDeviceId id) {
@@ -64,6 +68,19 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
     @Override
     public DeviceId getId() {
         return id;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final LinuxUsbDeviceDescriptor that = (LinuxUsbDeviceDescriptor) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 
     @Override
@@ -110,7 +127,7 @@ public class LinuxUsbDeviceDescriptor implements UsbDeviceDescriptor {
         @Override
         public LinuxUsbDeviceDescriptor build() {
             final Optional<String> desc = description == null || description.strip().isEmpty() ? Optional.empty() : Optional.of(description);
-            return new LinuxUsbDeviceDescriptor(id, vendorId, productId, desc);
+            return new LinuxUsbDeviceDescriptor(id, vendorId, productId, desc, List.copyOf(ifs));
         }
     }
 

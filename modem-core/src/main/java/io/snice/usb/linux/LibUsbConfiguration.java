@@ -21,7 +21,7 @@ public class LibUsbConfiguration {
 
     private final Path usbfs;
 
-    private final Duration scanInterval = Duration.ofMillis(500);
+    private final Duration scanInterval = Duration.ofMillis(1500);
 
     /**
      * A list of <vendor_id>[:<device_id>] that will be the only ones

@@ -20,7 +20,7 @@ public interface UsbDevice {
      * A human friendly description of the vendor.
      *
      * This description is only meant for human consumption and has
-     * not bearing, or use, to the running logic.
+     * no bearing, or use, to the running logic.
      */
     Optional<String> getVendorDescription();
 

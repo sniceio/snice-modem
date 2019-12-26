@@ -21,6 +21,11 @@ public class CachingFsmScheduler implements Scheduler {
         return task;
     }
 
+    @Override
+    public <T> Cancellable schedule(final T msg, final Duration delay) {
+        throw new RuntimeException("Dont use this one anymore");
+    }
+
     public List<CancellableTask> drainAllScheduledTasks() {
         final List<CancellableTask> list = tasks != null ? tasks : Collections.EMPTY_LIST;
         tasks = null;

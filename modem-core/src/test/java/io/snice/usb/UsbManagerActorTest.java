@@ -10,6 +10,7 @@ import io.snice.usb.fsm.UsbManagerContext;
 import io.snice.usb.fsm.UsbManagerData;
 import io.snice.usb.fsm.UsbManagerFsm;
 import io.snice.usb.fsm.UsbManagerState;
+import io.snice.usb.hektor.ActorUsbManagerContext;
 import io.snice.usb.impl.LinuxUsbScanner;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,7 +32,7 @@ public class UsbManagerActorTest extends UsbTestBase {
     @Override
     @Before
     public void setup() throws Exception {
-        super.setup();;
+        super.setup();
         data = new UsbManagerData();
         scanner = mock(LinuxUsbScanner.class);
         final var ref = mock(ActorRef.class);

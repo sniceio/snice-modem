@@ -6,6 +6,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class LinuxLibUsbScannerTest {
 
@@ -26,8 +28,10 @@ public class LinuxLibUsbScannerTest {
     @Test
     public void testScan() throws Exception {
         final var scanner = LinuxLibUsbScanner.of(conf, knownUsbVendors);
-        scanner.scan("2c7c"::equals).forEach(dev -> {
-            System.out.println(dev);
+        final var devices = scanner.scan("2c7c"::equals).stream()
+                .map(scanner::find).flatMap(Optional::stream).collect(Collectors.toList());
+        devices.forEach(device -> {
+            System.out.println(device);
         });
     }
 }

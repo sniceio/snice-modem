@@ -2,7 +2,7 @@ package io.snice.usb.impl;
 
 import io.snice.usb.UsbDevice;
 import io.snice.usb.UsbDeviceDescriptor;
-import io.snice.usb.UsbEvent;
+import io.snice.usb.event.UsbEvent;
 
 import java.util.Optional;
 

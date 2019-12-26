@@ -83,9 +83,15 @@ public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data
 
     @Override
     public void onReceive(final Object msg) {
-        fsm.onEvent(msg);
-        if (fsm.isTerminated()) {
-            ctx().stop();
+        final var adapter = new FsmSchedulerAdaptor(ctx().scheduler(), self());
+        Context._scheduler.set(adapter);
+        try {
+            fsm.onEvent(msg);
+            if (fsm.isTerminated()) {
+                ctx().stop();
+            }
+        } finally {
+            Context._scheduler.remove();
         }
     }
 

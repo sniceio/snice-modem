@@ -174,7 +174,7 @@ public class LinuxLibUsbScanner implements UsbScanner {
     }
 
     private List<UsbInterfaceDescriptor> createInterfaceDescriptors(final Device device, final LinuxDeviceId id) {
-        final List<UsbInterfaceDescriptor> interfaces = new ArrayList<>();
+        final List<LinuxUsbInterfaceDescriptor> interfaces = new ArrayList<>();
 
         final var usbfsRoot = config.getUsbSysfsRoot();
         final var deviceUsbfsRoot = usbfsRoot.resolve(id.getSysfs());

@@ -1,34 +1,32 @@
-package io.snice.modem.actors.fsm;
+package io.snice.hektor;
 
 import io.hektor.core.ActorRef;
 import io.hektor.fsm.Cancellable;
 import io.hektor.fsm.Scheduler;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.function.Supplier;
 
-public class CachingFsmScheduler2 implements Scheduler {
+public class FsmSchedulerAdaptor implements Scheduler {
 
-    private List<CancellableTask> tasks;
     private final io.hektor.core.Scheduler scheduler;
     private final ActorRef self;
 
-    public CachingFsmScheduler2(final io.hektor.core.Scheduler scheduler, final ActorRef self) {
+    public FsmSchedulerAdaptor(final io.hektor.core.Scheduler scheduler, final ActorRef self) {
         this.scheduler = scheduler;
         this.self = self;
     }
 
     @Override
     public <T> Cancellable schedule(final Supplier<T> producer, final Duration delay) {
-        final var event = producer.get();
-        final var timeout = scheduler.schedule(event, self, self, delay);
+        final var timeout = scheduler.schedule(producer, self, self, delay);
         return new CancellableTask<T>(timeout);
     }
 
     @Override
     public <T> Cancellable schedule(final T msg, final Duration delay) {
-        throw new RuntimeException("Dont use this one anymore");
+        final var timeout = scheduler.schedule(msg, self, self, delay);
+        return new CancellableTask<T>(timeout);
     }
 
     public static class CancellableTask<T> implements Cancellable {

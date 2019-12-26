@@ -2,11 +2,11 @@ package io.snice.usb.fsm;
 
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
-import io.snice.usb.UsbDevice;
-import io.snice.usb.UsbDeviceDescriptor;
 import io.snice.usb.UsbManagementEvent.TerminateEvent;
-import io.snice.usb.linux.LinuxUsbDeviceDescriptor;
+import io.snice.usb.event.Scan;
+import io.snice.usb.event.Subscribe;
 
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static io.snice.usb.fsm.UsbManagerState.IDLE;
@@ -28,8 +28,8 @@ public class UsbManagerFsm {
         final var scan = builder.withTransientState(SCAN).withExitAction(UsbManagerFsm::onScanExit);
         final var terminated = builder.withFinalState(TERMINATED);
 
-        idle.transitionTo(SCAN).onEvent(String.class).withGuard("SCAN"::equals).withAction(UsbManagerFsm::scan);
-        idle.transitionTo(SCAN).onEvent(String.class).withGuard(SCAN_TIMEOUT::equals).withAction(UsbManagerFsm::scan);
+        idle.transitionTo(SCAN).onEvent(Scan.class).withAction(UsbManagerFsm::scan);
+        idle.transitionTo(IDLE).onEvent(Subscribe.class).withAction(UsbManagerFsm::subscribe);
         scan.transitionTo(IDLE).asDefaultTransition();
 
         idle.transitionTo(TERMINATED).onEvent(TerminateEvent.class);
@@ -37,25 +37,37 @@ public class UsbManagerFsm {
         definition = builder.build();
     }
 
-    private static void onScanExit(final UsbManagerContext ctx, final UsbManagerData data) {
-        System.err.println("onScanExit");
-        // ctx.getScheduler().schedule(() -> SCAN_TIMEOUT, ctx.getConfig().getScanInterval());
+    /**
+     * Process a {@link Subscribe} request and also send over all the known devices at this point in
+     * time.
+     */
+    private static void subscribe(final Subscribe request, final UsbManagerContext ctx, final UsbManagerData data) {
+        // TODO: also honor the potential filter...
+        final var subscription = ctx.createSubscription(request);
+        data.addSubscription(subscription);
+        data.getAvailableDevices().forEach(dev -> {
+            ctx.deviceAttached(dev, List.of());
+        });
     }
 
-    private static void scan(final String event, final UsbManagerContext ctx, final UsbManagerData data) {
-        final var devices = ctx.getScanner().scan(ctx.getConfig()::processDevice).stream().map(dev -> (LinuxUsbDeviceDescriptor)dev).collect(Collectors.toList());
-        final var deviceIds = devices.stream().map(UsbDeviceDescriptor::getId).collect(Collectors.toList());
-        final var currentDevices = data.getDevices().stream().map(UsbDevice::getId).collect(Collectors.toList());
+    private static void onScanExit(final UsbManagerContext ctx, final UsbManagerData data) {
+        ctx.getScheduler().schedule(Scan.SCAN, ctx.getConfig().getScanInterval());
+    }
 
-        final var addDevices = deviceIds.stream().filter(id -> !currentDevices.contains(id)).collect(Collectors.toList());
-        final var delDevices = currentDevices.stream().filter(id -> !deviceIds.contains(id)).collect(Collectors.toList());
+    private static void scan(final Scan event, final UsbManagerContext ctx, final UsbManagerData data) {
+        final var devices = ctx.getScanner().scan(ctx.getConfig()::processDevice).stream().collect(Collectors.toList());
+        final var added = devices.stream().filter(data::isUnKnownDevice).collect(Collectors.toList());
+        final var removed = data.getAvailableDevices().stream().filter(dev -> !devices.contains(dev)).collect(Collectors.toList());
 
-        System.err.println("==== Added devicies: ");
-        addDevices.forEach(System.err::println);
+        added.forEach(dev -> {
+            data.deviceAttached(dev);
+            ctx.deviceAttached(dev, data.getSubscriptions());
+        });
 
-        System.err.println("==== Removed devicies: ");
-        delDevices.forEach(System.err::println);
-
+        removed.forEach(dev -> {
+            data.deviceDetached(dev);
+            ctx.deviceDetached(dev);
+        });
     }
 
 }
