@@ -2,6 +2,7 @@ package io.snice.modem.hektor;
 
 import io.hektor.core.Actor;
 import io.hektor.core.ActorRef;
+import io.snice.hektor.FsmActorContextSupport;
 import io.snice.modem.fsm.ModemManagerContext;
 import io.snice.usb.DeviceId;
 import io.snice.usb.event.Subscribe;
@@ -12,7 +13,7 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
  * Default implementation of the {@link ModemManagerContext} when executing
  * in an {@link Actor} environment/container provided by Hektor.io
  */
-public class ActorModemManagerContext implements ModemManagerContext {
+public class ActorModemManagerContext implements ModemManagerContext, FsmActorContextSupport {
 
     private final ActorRef self;
     private final ActorRef usbSubSystem;
@@ -36,6 +37,11 @@ public class ActorModemManagerContext implements ModemManagerContext {
     public void subscribe() {
         final var request = Subscribe.from(self).build();
         usbSubSystem.tell(request);
+    }
+
+    @Override
+    public void reply(final Object msg) {
+        sender().tell(msg, self);
     }
 
     public static class Builder {

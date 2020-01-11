@@ -53,6 +53,10 @@ public class UsbManagerData implements Data {
         return devices.values().stream().collect(Collectors.toList());
     }
 
+    public boolean hasSubscriptions() {
+        return !subscriptions.isEmpty();
+    }
+
     public List<Subscription> getSubscriptions() {
         return Collections.unmodifiableList(subscriptions);
     }

@@ -43,11 +43,6 @@ public class ActorUsbManagerContext implements UsbManagerContext {
     }
 
     @Override
-    public void deviceAttached(final UsbDeviceDescriptor device) {
-
-    }
-
-    @Override
     public void deviceAttached(final UsbDeviceDescriptor device, final List<Subscription> subscriptions) {
         System.err.println("New device attached: " + device);
         subscriptions.forEach(subscription -> deviceAttached(device, subscription));

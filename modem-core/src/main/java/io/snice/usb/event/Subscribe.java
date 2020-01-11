@@ -1,6 +1,6 @@
 package io.snice.usb.event;
 
-import io.snice.usb.DeviceId;
+import io.snice.usb.UsbDeviceDescriptor;
 
 import java.util.function.Predicate;
 
@@ -11,13 +11,14 @@ import static io.snice.preconditions.PreConditions.assertNotNull;
  */
 public class Subscribe<T> {
 
-    private final Predicate<DeviceId> filter;
+    private final Predicate<UsbDeviceDescriptor> filter;
     private final T sender;
 
-    private Subscribe(final T sender, final Predicate<DeviceId> filter) {
+    private Subscribe(final T sender, final Predicate<UsbDeviceDescriptor> filter) {
         this.sender = sender;
         this.filter = filter;
     }
+
 
     public T getSender() {
         return sender;
@@ -27,9 +28,9 @@ public class Subscribe<T> {
         assertNotNull(sender);
         return new FilterStep<T>() {
             @Override
-            public Builder<T> withFilter(final Predicate<DeviceId> filter) {
+            public Builder<T> withFilter(final Predicate<UsbDeviceDescriptor> filter) {
                 assertNotNull(filter);
-                return () -> new Subscribe<>(sender, id -> true);
+                return () -> new Subscribe<>(sender, filter);
             }
 
             @Override
@@ -39,8 +40,12 @@ public class Subscribe<T> {
         };
     }
 
+    public boolean accept(final UsbDeviceDescriptor descriptor) {
+        return filter.test(descriptor);
+    }
+
     public interface FilterStep<T> extends Builder<T> {
-        Builder<T> withFilter(final Predicate<DeviceId> filter);
+        Builder<T> withFilter(final Predicate<UsbDeviceDescriptor> filter);
     }
 
     public interface Builder<T> {

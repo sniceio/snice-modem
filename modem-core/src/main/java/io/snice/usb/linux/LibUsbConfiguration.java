@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import static io.snice.preconditions.PreConditions.assertArgument;
 import static io.snice.preconditions.PreConditions.assertNotEmpty;
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
@@ -21,7 +22,7 @@ public class LibUsbConfiguration {
 
     private final Path usbfs;
 
-    private final Duration scanInterval = Duration.ofMillis(1500);
+    private Duration scanInterval = Duration.ofMillis(1500);
 
     /**
      * A list of <vendor_id>[:<device_id>] that will be the only ones
@@ -33,9 +34,10 @@ public class LibUsbConfiguration {
         return new Builder();
     }
 
-    private LibUsbConfiguration(final Path usbfs, final Map<String, List<String>> whiteList) {
+    private LibUsbConfiguration(final Path usbfs, final Map<String, List<String>> whiteList, final Duration scanInterval) {
         this.usbfs = usbfs;
         this.whiteList = whiteList;
+        this.scanInterval = scanInterval;
     }
 
     public Duration getScanInterval() {
@@ -80,6 +82,8 @@ public class LibUsbConfiguration {
         private String usbfsRootPath = "/sys/bus/usb/devices";
         private List<String> whiteList;
 
+        private Duration scanInterval;
+
         public Builder() {
             // left empty so that jackson can create an
             // instance success this builder.
@@ -104,9 +108,26 @@ public class LibUsbConfiguration {
             return this;
         }
 
+        /**
+         * Specify how frequently we should scan for new USB devices attached to the system.
+         *
+         * Note, we will check so the times are not ridiculous.
+         *
+         * @param duration the duration between scan.
+         * @return
+         * @throws IllegalArgumentException in case the duration is less than 500ms. There is no upper bound
+         * but if you specify hours, one would wonder why you even bother.
+         */
+        public Builder withScanInterval(final Duration duration) throws IllegalArgumentException{
+            assertNotNull(duration);
+            assertArgument(duration.toMillis() >= 500, "The scan interval cannot be less than 500ms");
+            scanInterval = duration;
+            return this;
+        }
+
         public LibUsbConfiguration build() {
             final Path path = Paths.get(usbfsRootPath);
-            return new LibUsbConfiguration(path, ensureWhiteList());
+            return new LibUsbConfiguration(path, ensureWhiteList(), scanInterval == null ? Duration.ofMillis(1500) : scanInterval);
         }
 
         private Map<String, List<String>> ensureWhiteList() {

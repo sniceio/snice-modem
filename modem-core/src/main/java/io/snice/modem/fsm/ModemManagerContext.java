@@ -7,7 +7,7 @@ import io.snice.usb.UsbDevice;
 public interface ModemManagerContext extends Context {
 
     /**
-     * Claim a particular {@link UsbDevice}.
+     * Claim a particular {@link UsbDevice} from the underlying USB sub-system.
      *
      * @param device
      */
@@ -19,5 +19,16 @@ public interface ModemManagerContext extends Context {
      * environment.
      */
     void subscribe();
+
+    /**
+     * Reply to the sender with the given message. How that is accomplished is depending on the
+     * execution environment. If the FSM is executing in an actor environment, the implementing
+     * {@link ModemManagerContext} needs to keep track of the sender etc.
+     *
+     * @param msg the message to send back to the sender.
+     */
+    void reply(Object msg);
+
+
 
 }

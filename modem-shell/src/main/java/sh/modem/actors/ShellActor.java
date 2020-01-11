@@ -4,19 +4,23 @@ import io.hektor.actors.LoggingSupport;
 import io.hektor.actors.io.ConsoleActor;
 import io.hektor.actors.io.IoEvent;
 import io.hektor.actors.io.StreamToken;
-import io.hektor.core.Actor;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
+import io.hektor.core.Request;
+import io.hektor.core.Response;
+import io.hektor.core.TransactionalActor;
 import io.snice.buffer.Buffer;
 import io.snice.buffer.Buffers;
 import io.snice.buffer.ReadableBuffer;
 import io.snice.modem.actors.events.AtCommand;
 import io.snice.modem.actors.events.AtResponse;
+import io.snice.modem.actors.messages.TransactionMessage;
 import io.snice.modem.actors.messages.management.ManagementRequest;
 import io.snice.modem.actors.messages.management.ManagementRequest.ConnectEvent;
 import io.snice.modem.actors.messages.management.ManagementResponse;
 import io.snice.modem.actors.messages.management.ManagementResponse.ScanResponse;
-import io.snice.modem.actors.messages.TransactionMessage;
+import io.snice.modem.event.AvailableModems;
+import io.snice.modem.event.ListModems;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import sh.modem.ShellConfig;
@@ -28,16 +32,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import static io.snice.preconditions.PreConditions.assertNotNull;
 
-public class ShellActor implements Actor, LoggingSupport {
+public class ShellActor implements TransactionalActor, LoggingSupport {
 
     private static final Logger logger = LoggerFactory.getLogger(ShellActor.class);
 
     private static final Buffer AT_CMD = Buffers.wrap("AT");
-    private static final Buffer CONNECT_CMD = Buffers.wrap("connect");
-    private static final Buffer SCAN_CMD = Buffers.wrap("scan");
+    private static final Buffer CLAIM_CMD = Buffers.wrap("claim");
+    private static final Buffer LIST_CMD = Buffers.wrap("list");
     private static final Buffer EXIT_CMD = Buffers.wrap("exit");
 
     public static Props props(final ShellConfig config, final ExecutorService blockingIoPool, final ActorRef modemManager, final InputStream in, final OutputStream out) {
@@ -80,11 +85,24 @@ public class ShellActor implements Actor, LoggingSupport {
     public void onReceive(final Object msg) {
         if (msg instanceof StreamToken) {
             processCommandLine((StreamToken)msg);
+        } else if (msg instanceof AvailableModems) {
+            processAvailableModems((AvailableModems)msg);
         } else if (msg instanceof ManagementResponse) {
             processModemManagementResult((ManagementResponse)msg);
         } else if (msg instanceof AtResponse) {
             System.err.println("yep: \n" + ((AtResponse) msg).toAtResponse().getResponse().toString());
         }
+    }
+
+    @Override
+    public void onResponse(final Response response) {
+        System.out.println("yay, got a response for " + response.getTransactionId());
+
+    }
+
+    private void processAvailableModems(final AvailableModems modems) {
+        final var text = modems.getAvailableModems().stream().map(Object::toString).collect(Collectors.joining("\n"));
+        console.tell(IoEvent.writeEvent("Available Modems: \n" + text), self());
     }
 
     private void processModemManagementResult(final ManagementResponse result) {
@@ -106,10 +124,11 @@ public class ShellActor implements Actor, LoggingSupport {
 
     private void processCommandLine(final StreamToken token) {
         final Buffer line = token.getBuffer();
-        if (SCAN_CMD.equalsIgnoreCase(line)) {
-            modemManager.tell(ManagementRequest.scan(), self());
-        } else if (line.startsWith(CONNECT_CMD)) {
-            processConnectCommand(line.toReadableBuffer());
+        if (LIST_CMD.equalsIgnoreCase(line)) {
+            final Request request = modemManager.request(new ListModems(), self());
+            System.err.println("Requesting list modems " + request.getTransactionId());
+        } else if (line.startsWith(CLAIM_CMD)) {
+            processClaimCommand(line.toReadableBuffer());
         } else if (line.startsWithIgnoreCase(AT_CMD)) {
             processAtCommand(line);
         } else if (EXIT_CMD.equalsIgnoreCase(line)) {
@@ -123,7 +142,7 @@ public class ShellActor implements Actor, LoggingSupport {
         });
     }
 
-    private void processConnectCommand(final ReadableBuffer line) {
+    private void processClaimCommand(final ReadableBuffer line) {
         line.readUntilWhiteSpace(); // consume the "connect" word
         final Buffer port = line.toBuffer();
         final ConnectEvent connect = ManagementRequest.connect(port);

@@ -1,13 +1,16 @@
 package io.snice.hektor;
 
 import io.hektor.actors.LoggingSupport;
-import io.hektor.core.Actor;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Props;
+import io.hektor.core.Request;
+import io.hektor.core.Response;
+import io.hektor.core.TransactionalActor;
 import io.hektor.fsm.Context;
 import io.hektor.fsm.Data;
 import io.hektor.fsm.Definition;
 import io.hektor.fsm.FSM;
+import io.snice.fsm.Transaction;
 import io.snice.modem.actors.FirmwareAlertCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +26,7 @@ import static io.snice.preconditions.PreConditions.ensureNotNull;
  * execution environment for your FSM, default handling of logging etc.
  *
  */
-public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data> implements Actor, LoggingSupport {
+public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data> implements TransactionalActor, LoggingSupport {
 
     private static final Logger logger = LoggerFactory.getLogger(FsmActor.class);
 
@@ -85,14 +88,30 @@ public final class FsmActor<S extends Enum<S>, C extends Context, D extends Data
     public void onReceive(final Object msg) {
         final var adapter = new FsmSchedulerAdaptor(ctx().scheduler(), self());
         Context._scheduler.set(adapter);
+        FsmActorContextSupport._ctx.set(ctx()); // only matters if the Context actually is implementing this support interface
         try {
             fsm.onEvent(msg);
             if (fsm.isTerminated()) {
                 ctx().stop();
             }
         } finally {
+            FsmActorContextSupport._ctx.remove();
             Context._scheduler.remove();
         }
+    }
+
+    @Override
+    public void onRequest(final Request request) {
+        final Object o = request.getMessage();
+        if (o instanceof Transaction) {
+
+        }
+        onReceive(request.getMessage());
+    }
+
+    @Override
+    public void onResponse(final Response response) {
+        onReceive(response.getMessage());
     }
 
     public void unhandledEvent(final S state, final Object o) {

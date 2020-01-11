@@ -6,7 +6,6 @@ import io.snice.usb.UsbManagementEvent.TerminateEvent;
 import io.snice.usb.event.Scan;
 import io.snice.usb.event.Subscribe;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 import static io.snice.usb.fsm.UsbManagerState.IDLE;
@@ -42,11 +41,10 @@ public class UsbManagerFsm {
      * time.
      */
     private static void subscribe(final Subscribe request, final UsbManagerContext ctx, final UsbManagerData data) {
-        // TODO: also honor the potential filter...
         final var subscription = ctx.createSubscription(request);
         data.addSubscription(subscription);
-        data.getAvailableDevices().forEach(dev -> {
-            ctx.deviceAttached(dev, List.of());
+        data.getAvailableDevices().stream().filter(request::accept).forEach(dev -> {
+            ctx.deviceAttached(dev, subscription);
         });
     }
 
@@ -61,7 +59,9 @@ public class UsbManagerFsm {
 
         added.forEach(dev -> {
             data.deviceAttached(dev);
-            ctx.deviceAttached(dev, data.getSubscriptions());
+            if (data.hasSubscriptions()) {
+                ctx.deviceAttached(dev, data.getSubscriptions());
+            }
         });
 
         removed.forEach(dev -> {

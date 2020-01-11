@@ -4,6 +4,10 @@ console:
     alwaysFlush: true
 
 usb:
+  # Specify the scan interval. I.e., how often we will scan
+  # for new USB devices. The format is Duration, which sucks
+  # so may perhaps redo this... See Duration.parse in the javadocs
+  scanInterval: PT10S
   whiteList:
     # Quectel
     - 2c7c

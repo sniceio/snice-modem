@@ -30,8 +30,6 @@ public interface UsbManagerContext extends Context {
      */
     Subscription createSubscription(Subscribe subscribeRequest);
 
-    void deviceAttached(UsbDeviceDescriptor device);
-
     void deviceAttached(UsbDeviceDescriptor device, List<Subscription> subscriptions);
     void deviceAttached(UsbDeviceDescriptor device, Subscription subscription);
 

@@ -21,8 +21,25 @@ public interface UsbEvent {
 
     UsbDeviceDescriptor getUsbDeviceDescriptor();
 
-    interface UsbAttachEvent extends UsbEvent { }
+    default boolean isDeviceAttach() {
+        return false;
+    }
 
-    interface UsbDetachEvent extends UsbEvent { }
+    default boolean isDeviceDetach() {
+        return false;
+    }
+
+    interface UsbAttachEvent extends UsbEvent {
+        default boolean isDeviceAttach() {
+            return true;
+        }
+    }
+
+    interface UsbDetachEvent extends UsbEvent {
+
+        default boolean isDeviceDetach() {
+            return true;
+        }
+    }
 
 }

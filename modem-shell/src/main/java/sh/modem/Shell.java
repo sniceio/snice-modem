@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.hektor.config.HektorConfiguration;
 import io.hektor.core.ActorRef;
 import io.hektor.core.Hektor;
@@ -27,6 +28,7 @@ import io.snice.usb.hektor.ActorUsbManagerContext;
 import io.snice.usb.linux.LibUsbConfiguration;
 import io.snice.usb.linux.LinuxLibUsbScanner;
 import io.snice.usb.linux.UsbIdLoader;
+import sh.modem.actors.ShellActor;
 
 import javax.usb.UsbException;
 import java.io.IOException;
@@ -54,6 +56,7 @@ public class Shell {
             }
         });
         mapper.registerModule(module);
+        mapper.registerModule(new JavaTimeModule());
         return mapper.readValue(configFile.toFile(), ShellConfig.class);
     }
 
@@ -117,7 +120,6 @@ public class Shell {
         final var modemProps = configureModemSubSystem(usbSubSystem);
         final var modemSubSystem = hektor.actorOf(modemProps, "modems");
 
-        // final ActorRef modemManager = hektor.actorOf(ModemManagerActor.props(blockingIoPool), "modem_manager");
-        // final ActorRef shell = hektor.actorOf(ShellActor.props(shellConfig, blockingIoPool, modemManager, System.in, System.out), "shell");
+        final ActorRef shell = hektor.actorOf(ShellActor.props(shellConfig, blockingIoPool, modemSubSystem, System.in, System.out), "shell");
     }
 }
