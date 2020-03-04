@@ -47,7 +47,7 @@
         <hektor.version>0.0.2</hektor.version>
         <logback.version>1.2.3</logback.version>
         <sl4j.version>1.7.25</sl4j.version>
-        <jackson.version>2.9.9</jackson.version>
+        <jackson.version>2.10.3</jackson.version>
         <fazecast.version>2.4.0</fazecast.version>
         <junit.version>4.8.2</junit.version>
         <mockito.version>2.27.0</mockito.version>
